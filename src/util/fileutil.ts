@@ -1,19 +1,31 @@
-import {App, getAllTags, TFile} from "obsidian";
+import {App, getAllTags, normalizePath, TAbstractFile, TFile, Vault} from "obsidian";
 
 /**
  * Get all files with tag.
  * @param app
  * @param tag The tag including '#'
  * @param subtags Whether it should match subtags. E.g. #example will also match #example/foo
+ * @param invert Get the files withouth tag
  */
-export function* getMarkdownFilesWithTag(app: App, tag: string, subtags = true) {
+export function* getMarkdownFilesWithTag(app: App, tag: string, subtags = true, invert = false) {
 	for (const file of app.vault.getMarkdownFiles()) {
 		const fileCache = app.metadataCache.getFileCache(file);
 		if (!fileCache) continue;
 		const tags = getAllTags(fileCache);
-		if (tags?.find(value => value === tag || value.startsWith(tag + '/') && subtags)) {
+		if (tags?.some(value => value === tag || value.startsWith(tag + '/') && subtags) != invert) {
 			yield file;
 		}
+	}
+}
+
+export function getFilesInFolder(app : App, folder: string, includeSubFolders = true) {
+	if (includeSubFolders) {
+		let files: TAbstractFile[] = [];
+		const folderByPath = app.vault.getFolderByPath(normalizePath(folder));
+		if (folderByPath) Vault.recurseChildren(folderByPath, (file) => files.push(file))
+		return files;
+	} else {
+		return app.vault.getFolderByPath(normalizePath(folder))?.children || [];
 	}
 }
 

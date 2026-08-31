@@ -1,9 +1,9 @@
 import {
-	Plugin,
+	Plugin, PluginSettingTab,
 } from 'obsidian';
 import {
 	DEFAULT_SETTINGS,
-	AutoPropSettings,
+	AutoPropSettings, PropertySettingsTab,
 } from './settings';
 import {patchPropertyMenu} from "./patch/propertymenu";
 import {HTMLInputLikeElement, registerStrategySuggester} from "./suggesters/strategysuggester";
@@ -15,11 +15,13 @@ export default class AutoPropPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
+		this.addSettingTab(new PropertySettingsTab(this));
 		this.register(patchPropertyMenu(this))
 		this.registerDomEvent(activeDocument, 'click', (event: MouseEvent) => {
 			const target = event.target;
 			if (!(target instanceof HTMLElement)) return;
 			if (!target.parentElement?.parentElement?.hasClass('metadata-property')) return;
+
 			if (target.hasClass('multi-select-container')) {
 				let input = target.querySelector('.multi-select-input') as HTMLInputLikeElement;
 				if (input) registerStrategySuggester(this, input)

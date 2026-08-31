@@ -1,56 +1,40 @@
-import {Modal, Setting} from "obsidian";
+import {ButtonComponent, Modal, Notice, PluginSettingTab, Setting, SettingDefinitionItem} from "obsidian";
 import AutoPropPlugin from "./main";
 import {TagSuggester} from "./suggesters/tagsuggester";
+import {FolderSuggester} from "./suggesters/foldersuggester";
+import {
+	FileFolderStrategy,
+	FileTagStrategy,
+	AutoPropStrategy,
+	StrategyType, ListStrategy, CodeStrategy, DisjunctionStrategy, ConjunctionStrategy, NegationStrategy
+} from "./strategy";
+import {evaluateStrategyCode, validateResult} from "./util/code";
 
 export interface AutoPropSettings {
 	properties: { [key: string]: AutoPropStrategy };
+	allowJs: boolean;
 }
-
-export interface AutoPropFileTagStrategy {
-	type: 'Tag'
-	tag: string;
-}
-
-export interface AutoPropFileFolderStrategy {
-	type: 'Folder'
-	folder: string;
-	includeSubFolders: number
-}
-
-export interface AutoPropListStrategy {
-	type: 'List'
-	options: { label: string, value: string }[];
-}
-
-export interface AutoPropJSStrategy {
-	type: 'JS'
-	code: string;
-}
-
-export interface AutoPropDisjunctionStrategy {
-	type: 'Disjunction'
-	strategies: AutoPropStrategy[]
-}
-
-export interface AutoPropConjunctionStrategy {
-	type: 'Conjunction'
-	strategies: AutoPropStrategy[]
-}
-
-export type AutoPropStrategy =
-	AutoPropFileTagStrategy
-	| AutoPropFileFolderStrategy
-	| AutoPropListStrategy
-	| AutoPropJSStrategy
-	| AutoPropDisjunctionStrategy
-	| AutoPropConjunctionStrategy
-
-export type StrategyType = AutoPropStrategy['type']
-export type OptStrategyType = StrategyType | ''
 
 export const DEFAULT_SETTINGS: AutoPropSettings = {
-	properties: {}
+	properties: {},
+	allowJs: false
 };
+
+
+export class PropertySettingsTab extends PluginSettingTab {
+	private plugin: AutoPropPlugin;
+
+	constructor(plugin: AutoPropPlugin) {
+		super(plugin.app, plugin);
+		this.plugin = plugin;
+	}
+
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		return [
+			{name: 'AllowJSCode', control: {type: 'toggle', key: 'allowJs'}}
+		];
+	}
+}
 
 
 export class PropertySettingsModal extends Modal {
@@ -75,10 +59,12 @@ export class PropertySettingsModal extends Modal {
 
 	render() {
 		this.contentEl.empty()
-		this.renderStrategySelector(this.contentEl);
+		this.renderStrategySelector(this.contentEl,
+			(value) => this.propertyStrategy = value,
+			() => this.propertyStrategy, 0);
 	}
 
-	renderStrategySelector(contentEl: HTMLElement) {
+	renderStrategySelector(contentEl: HTMLElement, setValue: (cb: AutoPropStrategy | undefined) => void, getValue: () => AutoPropStrategy | undefined, depth: number, excludeNegation = false) {
 		const setting = new Setting(contentEl)
 		const strategyContentEl = contentEl.createDiv();
 		setting
@@ -93,52 +79,55 @@ export class PropertySettingsModal extends Modal {
 					.addOption('JS', 'JS')
 					.addOption('Disjunction', 'And')
 					.addOption('Conjunction', 'Or')
-					.setValue(this.properties[this.property]?.type ?? '')
+				if (!excludeNegation) dropdown.addOption('Negation', 'Not')
+				dropdown
+					.setValue(getValue()?.type ?? '')
 					.onChange(async value => {
 						if (value === '') {
-							this.propertyStrategy = undefined;
+							setValue(undefined)
 						} else {
-							this.propertyStrategy = defaultStrategy(value as StrategyType);
+							setValue(defaultStrategy(value as StrategyType));
 						}
-						this.renderStrategy(value as StrategyType, strategyContentEl);
+						this.renderStrategy(strategyContentEl, getValue(), depth);
 						await this.plugin.saveSettings();
 					})
-					.then(() => this.renderStrategy(dropdown.getValue() as StrategyType, strategyContentEl))
+					.then(() => this.renderStrategy(strategyContentEl, getValue(), depth))
 			})
 
 	}
 
-	private renderStrategy(value: OptStrategyType, contentEl: HTMLDivElement) {
+	private renderStrategy(contentEl: HTMLDivElement, value: AutoPropStrategy | undefined, depth: number) {
 		contentEl.empty();
-		switch (value) {
+		switch (value?.type) {
 			case "Tag":
-				return this.renderTagStrategy(contentEl)
+				return this.renderTagStrategy(contentEl, value)
 			case "Folder":
-				break;
+				return this.renderFolderStrategy(contentEl, value)
 			case "List":
-				break;
+				return this.renderListStrategy(contentEl, value)
 			case "JS":
-				break;
+				return this.renderCodeBlock(contentEl, value)
 			case "Disjunction":
-				break;
+				return this.renderDisjunction(contentEl, value, depth)
 			case "Conjunction":
-				break;
-			case "":
+				return this.renderConjunctions(contentEl, value, depth)
+			case "Negation":
+				return this.renderNegation(contentEl, value, depth)
+			default:
 				break;
 		}
 	}
 
-	private renderTagStrategy(contentEl: HTMLDivElement) {
-		let strategy = this.propertyStrategy as AutoPropFileTagStrategy;
+	private renderTagStrategy(contentEl: HTMLDivElement, strategy: FileTagStrategy) {
 		new Setting(contentEl)
 			.setName('Tag')
 			.setDesc('Select the tag the file should match')
 			.addText(text => {
 				text.setValue(strategy?.tag ?? '')
 					.onChange(async value => {
-					strategy.tag = value;
-					await this.plugin.saveSettings();
-				});
+						strategy.tag = value;
+						await this.plugin.saveSettings();
+					});
 				const suggest = new TagSuggester(this.app, text.inputEl);
 				suggest.onSelect(async (tag) => {
 					text.setValue(tag);
@@ -148,18 +137,208 @@ export class PropertySettingsModal extends Modal {
 				});
 
 			})
+		new Setting(contentEl)
+			.setName('Exact match')
+			.setDesc('Should tag match exactly or include subtags')
+			.addToggle(toggle => toggle.setValue(strategy.exact)
+				.onChange(async value => {
+					strategy.exact = value;
+					await this.plugin.saveSettings();
+				}));
 
 	}
 
+	private renderFolderStrategy(contentEl: HTMLDivElement, strategy: FileFolderStrategy) {
+		new Setting(contentEl)
+			.setName('Folder')
+			.setDesc('Select the folder should match')
+			.addText(text => {
+				text.setValue(strategy?.folder ?? '')
+					.onChange(async value => {
+						strategy.folder = value;
+						await this.plugin.saveSettings();
+					})
+				const suggest = new FolderSuggester(this.app, text.inputEl);
+				suggest.onSelect(async (tag) => {
+					text.setValue(tag.path);
+					strategy.folder = tag.path;
+					await this.plugin.saveSettings();
+					suggest.close();
+				});
+			})
+		new Setting(contentEl)
+			.setName('Include subfolders')
+			.addToggle(toggle => toggle.setValue(strategy.includeSubFolders)
+				.onChange(async value => {
+					strategy.includeSubFolders = value;
+					await this.plugin.saveSettings();
+				}));
+	}
+
+	private renderListStrategy(contentEl: HTMLDivElement, strategy: ListStrategy) {
+		let setting = new Setting(contentEl);
+		let listElement = contentEl.createDiv();
+		setting
+			.setName('List')
+			.setDesc('List of options')
+			.addButton(btn =>
+				btn.setIcon('plus').onClick(_ => {
+					strategy.options.push({label: '', value: ''});
+					this.renderListOptions(listElement, strategy);
+				})
+			)
+		this.renderListOptions(listElement, strategy);
+
+	}
+
+	private renderListOptions(element: HTMLDivElement, strategy: ListStrategy) {
+		element.empty();
+		for (let i = 0; i < strategy.options.length; i++) {
+			let option = strategy.options[i]!;
+			new Setting(element)
+				.addText(txt => txt.setPlaceholder('Label').setValue(option.label)
+					.onChange(async value => {
+						option.label = value;
+						await this.plugin.saveSettings();
+					})
+				)
+				.addText(txt => txt.setPlaceholder('Value').setValue(option.value)
+					.onChange(async value => {
+						option.value = value;
+						await this.plugin.saveSettings();
+					}))
+				.addButton(btn => btn.setIcon('move-up').onClick(async _ => {
+					let swap = strategy.options[i]!;
+					strategy.options[i] = strategy.options[i - 1]!;
+					strategy.options[i - 1] = swap;
+					await this.plugin.saveSettings();
+					this.renderListOptions(element, strategy);
+				}).setDisabled(i === 0))
+				.addButton(btn => btn.setIcon('move-down').onClick(async _ => {
+					let swap = strategy.options[i]!;
+					strategy.options[i] = strategy.options[i + 1]!;
+					strategy.options[i + 1] = swap;
+					await this.plugin.saveSettings();
+					this.renderListOptions(element, strategy);
+				}).setDisabled(i === strategy.options.length - 1))
+				.addButton(btn => btn.setIcon('trash').onClick(_ => {
+					strategy.options.splice(i, 1);
+					// "Tail recursion (ish)" should be fine?
+					this.renderListOptions(element, strategy);
+				}))
+		}
+	}
+
+	private renderCodeBlock(element: HTMLDivElement, strategy: CodeStrategy) {
+		new Setting(element)
+			.setName('JavaScript')
+			.setDesc('JavaScript code: function(app) { ... }')
+			.addTextArea(text => text.setValue(strategy.code).onChange(async value => {
+				strategy.code = value;
+				await this.plugin.saveSettings();
+			}))
+			.addButton(btn =>
+				btn.setIcon('square-chevron-right')
+					.onClick(_ => this.validate(btn, strategy)));
+
+	}
+
+	private async validate(btn: ButtonComponent, strategy: CodeStrategy) {
+		btn.setIcon('circle-dashed')
+		btn.setDisabled(true);
+		let result = await evaluateStrategyCode(this.plugin, strategy.code, (value) => validateResult(value))
+		if (result != null) {
+			new Notice('Code completed successfully.');
+		}
+		btn.setDisabled(false);
+		btn.setIcon('square-chevron-right')
+	}
+
+	private renderDisjunction(element: HTMLDivElement, strategy: DisjunctionStrategy, depth: number) {
+		let setting = new Setting(element);
+		let strategyListElement = element.createDiv();
+		setting
+			.setName('And')
+			.setDesc('Disjunctions')
+			.addButton(btn =>
+				btn.setIcon('plus').onClick(_ => {
+					strategy.strategies.push(defaultStrategy('Tag'));
+					this.renderStrategyList(strategyListElement, strategy, depth);
+				})
+			)
+		this.renderStrategyList(strategyListElement, strategy, depth);
+
+	}
+
+	private renderConjunctions(element: HTMLDivElement, strategy: ConjunctionStrategy, depth: number) {
+		let setting = new Setting(element);
+		let strategyListElement = element.createDiv();
+		setting
+			.setName('Or')
+			.setDesc('Conjunctions')
+			.addButton(btn =>
+				btn.setIcon('plus').onClick(_ => {
+					strategy.strategies.push(defaultStrategy('Tag'));
+					this.renderStrategyList(strategyListElement, strategy, depth);
+				})
+			)
+		this.renderStrategyList(strategyListElement, strategy, depth);
+	}
+
+	private renderStrategyList(element: HTMLDivElement, strategy: ConjunctionStrategy | DisjunctionStrategy, depth: number) {
+		element.empty()
+		for (let i = 0; i < strategy.strategies.length; i++) {
+			new Setting(element)
+				.setName(`SubStrategy ${i}`)
+				.setHeading()
+				.addButton(btn => btn.setIcon('move-up').onClick(async _ => {
+					let swap = strategy.strategies[i]!;
+					strategy.strategies[i] = strategy.strategies[i - 1]!;
+					strategy.strategies[i - 1] = swap;
+					await this.plugin.saveSettings();
+					this.renderStrategyList(element, strategy, depth + 1);
+				}).setDisabled(i === 0))
+				.addButton(btn => btn.setIcon('move-down').onClick(async _ => {
+					let swap = strategy.strategies[i]!;
+					strategy.strategies[i] = strategy.strategies[i + 1]!;
+					strategy.strategies[i + 1] = swap;
+					await this.plugin.saveSettings();
+					this.renderStrategyList(element, strategy, depth + 1);
+				}).setDisabled(i === strategy.strategies.length - 1))
+				.addButton(btn => btn.setIcon('trash').onClick(_ => {
+					strategy.strategies.splice(i, 1);
+					// "Tail recursion (ish)" should be fine?
+					this.renderStrategyList(element, strategy, depth + 1);
+				}))
+			const contentEl = element.createDiv();
+			contentEl.addClass(`depth-${depth % 3}`, 'strategy-nested');
+			this.renderStrategySelector(contentEl,
+				(value) => strategy.strategies[i] = value ?? strategy.strategies[i]!,
+				() => strategy.strategies[i],
+				depth + 1);
+		}
+	}
+
+	private renderNegation(contentEl: HTMLDivElement, strategy: NegationStrategy, depth: number) {
+		new Setting(contentEl)
+			.setName('Negation')
+			.setHeading();
+
+		const element = contentEl.createDiv();
+		element.addClass(`depth-${depth % 3}`, 'strategy-nested');
+		this.renderStrategySelector(element,
+			(value) => strategy.strategy = (value as Exclude<AutoPropStrategy, NegationStrategy>) ?? strategy.strategy,
+			() => strategy.strategy, depth + 1, true)
+	}
 }
 
 
 function defaultStrategy(value: Exclude<StrategyType, ''>): AutoPropStrategy {
 	switch (value) {
 		case "Tag":
-			return {type: 'Tag', tag: ''};
+			return {type: 'Tag', tag: '', exact: true};
 		case "Folder":
-			return {type: 'Folder', folder: '', includeSubFolders: 0};
+			return {type: 'Folder', folder: '', includeSubFolders: false};
 		case "List":
 			return {type: 'List', options: []};
 		case "JS":
@@ -168,6 +347,8 @@ function defaultStrategy(value: Exclude<StrategyType, ''>): AutoPropStrategy {
 			return {type: 'Disjunction', strategies: []}
 		case "Conjunction":
 			return {type: 'Conjunction', strategies: []}
+		case "Negation":
+			return {type: 'Negation', strategy: defaultStrategy('Tag') as FileTagStrategy}
 
 	}
 }

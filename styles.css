@@ -6,3 +6,20 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+.strategy-nested {
+	margin-left: 5px;
+	border-radius: 5px;
+	padding: 5px;
+}
+
+.strategy-nested.depth-0 {
+	background-color: rgb(251 173 173);
+}
+
+.strategy-nested.depth-1 {
+	background-color: rgb(155 243 147);
+}
+
+.strategy-nested.depth-2 {
+	background-color: rgb(91 227 232);
+}
