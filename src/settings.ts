@@ -36,6 +36,12 @@ export class PropertySettingsTab extends PluginSettingTab {
 	}
 }
 
+type RenderStrategyArgs = {
+	negation?: boolean
+	and?: boolean
+	or?: boolean
+	js?: boolean
+}
 
 export class PropertySettingsModal extends Modal {
 	constructor(private plugin: AutoPropPlugin, private property: string) {
@@ -64,7 +70,8 @@ export class PropertySettingsModal extends Modal {
 			() => this.propertyStrategy, 0);
 	}
 
-	renderStrategySelector(contentEl: HTMLElement, setValue: (cb: AutoPropStrategy | undefined) => void, getValue: () => AutoPropStrategy | undefined, depth: number, excludeNegation = false) {
+
+	renderStrategySelector(contentEl: HTMLElement, setValue: (cb: AutoPropStrategy | undefined) => void, getValue: () => AutoPropStrategy | undefined, depth: number, options: RenderStrategyArgs = {}) {
 		const setting = new Setting(contentEl)
 		const strategyContentEl = contentEl.createDiv();
 		setting
@@ -76,10 +83,10 @@ export class PropertySettingsModal extends Modal {
 					.addOption('Tag', 'Tag')
 					.addOption('Folder', 'Folder')
 					.addOption('List', 'List')
-					.addOption('JS', 'JS')
-					.addOption('Disjunction', 'And')
-					.addOption('Conjunction', 'Or')
-				if (!excludeNegation) dropdown.addOption('Negation', 'Not')
+				if (!options.js) dropdown.addOption('JS', 'JS')
+				if (!options.or) dropdown.addOption('Disjunction', 'Or')
+				if (!options.and) dropdown.addOption('Conjunction', 'And')
+				if (!options.negation) dropdown.addOption('Negation', 'Not')
 				dropdown
 					.setValue(getValue()?.type ?? '')
 					.onChange(async value => {
@@ -258,15 +265,15 @@ export class PropertySettingsModal extends Modal {
 		let setting = new Setting(element);
 		let strategyListElement = element.createDiv();
 		setting
-			.setName('And')
+			.setName('Or')
 			.setDesc('Disjunctions')
 			.addButton(btn =>
 				btn.setIcon('plus').onClick(_ => {
-					strategy.strategies.push(defaultStrategy('Tag'));
-					this.renderStrategyList(strategyListElement, strategy, depth);
+					strategy.strategies.push(defaultStrategy('Tag') as FileTagStrategy);
+					this.renderStrategyList(strategyListElement, strategy, depth, {or: true});
 				})
 			)
-		this.renderStrategyList(strategyListElement, strategy, depth);
+		this.renderStrategyList(strategyListElement, strategy, depth, {or: true});
 
 	}
 
@@ -274,18 +281,24 @@ export class PropertySettingsModal extends Modal {
 		let setting = new Setting(element);
 		let strategyListElement = element.createDiv();
 		setting
-			.setName('Or')
+			.setName('And')
 			.setDesc('Conjunctions')
 			.addButton(btn =>
 				btn.setIcon('plus').onClick(_ => {
-					strategy.strategies.push(defaultStrategy('Tag'));
-					this.renderStrategyList(strategyListElement, strategy, depth);
+					strategy.strategies.push(defaultStrategy('Tag') as FileTagStrategy);
+					this.renderStrategyList(strategyListElement, strategy, depth, {and: true});
 				})
 			)
-		this.renderStrategyList(strategyListElement, strategy, depth);
+		this.renderStrategyList(strategyListElement, strategy, depth, {and: true});
 	}
 
-	private renderStrategyList(element: HTMLDivElement, strategy: ConjunctionStrategy | DisjunctionStrategy, depth: number) {
+	/**
+	 * @param element
+	 * @param strategy
+	 * @param depth
+	 * @param options
+	 */
+	private renderStrategyList(element: HTMLDivElement, strategy: ConjunctionStrategy | DisjunctionStrategy, depth: number, options: RenderStrategyArgs) {
 		element.empty()
 		for (let i = 0; i < strategy.strategies.length; i++) {
 			new Setting(element)
@@ -296,26 +309,26 @@ export class PropertySettingsModal extends Modal {
 					strategy.strategies[i] = strategy.strategies[i - 1]!;
 					strategy.strategies[i - 1] = swap;
 					await this.plugin.saveSettings();
-					this.renderStrategyList(element, strategy, depth + 1);
+					this.renderStrategyList(element, strategy, depth, options);
 				}).setDisabled(i === 0))
 				.addButton(btn => btn.setIcon('move-down').onClick(async _ => {
 					let swap = strategy.strategies[i]!;
 					strategy.strategies[i] = strategy.strategies[i + 1]!;
 					strategy.strategies[i + 1] = swap;
 					await this.plugin.saveSettings();
-					this.renderStrategyList(element, strategy, depth + 1);
+					this.renderStrategyList(element, strategy, depth, options);
 				}).setDisabled(i === strategy.strategies.length - 1))
 				.addButton(btn => btn.setIcon('trash').onClick(_ => {
 					strategy.strategies.splice(i, 1);
 					// "Tail recursion (ish)" should be fine?
-					this.renderStrategyList(element, strategy, depth + 1);
+					this.renderStrategyList(element, strategy, depth, options);
 				}))
 			const contentEl = element.createDiv();
 			contentEl.addClass(`depth-${depth % 3}`, 'strategy-nested');
 			this.renderStrategySelector(contentEl,
 				(value) => strategy.strategies[i] = value ?? strategy.strategies[i]!,
 				() => strategy.strategies[i],
-				depth + 1);
+				depth + 1, options);
 		}
 	}
 
@@ -328,7 +341,7 @@ export class PropertySettingsModal extends Modal {
 		element.addClass(`depth-${depth % 3}`, 'strategy-nested');
 		this.renderStrategySelector(element,
 			(value) => strategy.strategy = (value as Exclude<AutoPropStrategy, NegationStrategy>) ?? strategy.strategy,
-			() => strategy.strategy, depth + 1, true)
+			() => strategy.strategy, depth + 1, {negation: true, js: true})
 	}
 }
 

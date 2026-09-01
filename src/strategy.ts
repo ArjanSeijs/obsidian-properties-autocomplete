@@ -43,7 +43,7 @@ export interface CodeStrategy {
  */
 export interface DisjunctionStrategy {
 	type: 'Disjunction'
-	strategies: AutoPropStrategy[]
+	strategies: Exclude<AutoPropStrategy, DisjunctionStrategy>[]
 }
 
 /**
@@ -51,7 +51,7 @@ export interface DisjunctionStrategy {
  */
 export interface ConjunctionStrategy {
 	type: 'Conjunction'
-	strategies: AutoPropStrategy[]
+	strategies: Exclude<AutoPropStrategy, ConjunctionStrategy>[]
 }
 
 /**

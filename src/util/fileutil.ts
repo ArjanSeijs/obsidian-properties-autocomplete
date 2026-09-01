@@ -1,5 +1,12 @@
 import {App, getAllTags, normalizePath, TAbstractFile, TFile, Vault} from "obsidian";
 
+
+export function getTags(app: App, file: TFile, tag: string) {
+	const fileCache = app.metadataCache.getFileCache(file);
+	if (!fileCache) return [];
+	return getAllTags(fileCache) ?? [];
+}
+
 /**
  * Get all files with tag.
  * @param app
@@ -9,16 +16,14 @@ import {App, getAllTags, normalizePath, TAbstractFile, TFile, Vault} from "obsid
  */
 export function* getMarkdownFilesWithTag(app: App, tag: string, subtags = true, invert = false) {
 	for (const file of app.vault.getMarkdownFiles()) {
-		const fileCache = app.metadataCache.getFileCache(file);
-		if (!fileCache) continue;
-		const tags = getAllTags(fileCache);
-		if (tags?.some(value => value === tag || value.startsWith(tag + '/') && subtags) != invert) {
+		const tags = getTags(app, file, tag)
+		if (tags.some(value => value === tag || value.startsWith(tag + '/') && subtags) != invert) {
 			yield file;
 		}
 	}
 }
 
-export function getFilesInFolder(app : App, folder: string, includeSubFolders = true) {
+export function getFilesInFolder(app: App, folder: string, includeSubFolders = true) {
 	if (includeSubFolders) {
 		let files: TAbstractFile[] = [];
 		const folderByPath = app.vault.getFolderByPath(normalizePath(folder));
@@ -37,6 +42,7 @@ export function getFilesInFolder(app : App, folder: string, includeSubFolders = 
 export function getFrontmatter<T>(app: App, file: TFile) {
 	let cache = app.metadataCache.getFileCache(file)
 	if (!cache) return {} as T
+	if (!cache.frontmatter) return {} as T
 	return cache.frontmatter as T;
 }
 
@@ -47,5 +53,5 @@ export function getFrontmatter<T>(app: App, file: TFile) {
  */
 export function getAliases(app: App, file: TFile) {
 	let frontmatter = getFrontmatter<{ aliases: string[] | undefined }>(app, file);
-	return frontmatter.aliases || [];
+	return frontmatter?.aliases || [];
 }
