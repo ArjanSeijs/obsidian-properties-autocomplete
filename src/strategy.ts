@@ -32,12 +32,6 @@ export interface CodeStrategy {
 	code: string;
 }
 
-/*
- * TODO Maybe change into one of the Conjunction forms (probably disjunction)
- *  At least make sure that Conjunctions are flattened.
- * See also settings and strategysuggester
- */
-
 /**
  * Or / Union
  */

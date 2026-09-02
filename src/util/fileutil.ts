@@ -1,7 +1,7 @@
 import {App, getAllTags, normalizePath, TAbstractFile, TFile, Vault} from "obsidian";
 
 
-export function getTags(app: App, file: TFile, tag: string) {
+export function getTags(app: App, file: TFile) {
 	const fileCache = app.metadataCache.getFileCache(file);
 	if (!fileCache) return [];
 	return getAllTags(fileCache) ?? [];
@@ -16,8 +16,8 @@ export function getTags(app: App, file: TFile, tag: string) {
  */
 export function* getMarkdownFilesWithTag(app: App, tag: string, subtags = true, invert = false) {
 	for (const file of app.vault.getMarkdownFiles()) {
-		const tags = getTags(app, file, tag)
-		if (tags.some(value => value === tag || value.startsWith(tag + '/') && subtags) != invert) {
+		const tags = getTags(app, file)
+		if (tags.some(value => value === tag || value.startsWith(tag) && subtags) != invert) {
 			yield file;
 		}
 	}
@@ -54,4 +54,33 @@ export function getFrontmatter<T>(app: App, file: TFile) {
 export function getAliases(app: App, file: TFile) {
 	let frontmatter = getFrontmatter<{ aliases: string[] | undefined }>(app, file);
 	return frontmatter?.aliases || [];
+}
+
+/**
+ * Obsidian normalized path resolve similar to path.resolve from node.
+ * e.g: [absolute/path/to/file, other/absolute/path/with/../, ./some/../relative]
+ * will result in: other/absolute/path/relative
+ * @param paths
+ */
+export function pathResolve(...paths: string[]) {
+	let normalized = paths.map(normalizePath);
+
+	// Find last absolute path
+	let start = Math.max(0, normalized.findLastIndex(path => !path.startsWith(".")));
+	let parts = normalized
+		.slice(start)
+		.map(path => path.split("/"))
+		.flat()
+		.filter(part => part.length > 0)
+
+	let result: string[] = [];
+	for (const part of parts) {
+		if (part === ".") continue;
+		if (part === "..") {
+			if (result.length > 0) result.pop()
+		} else {
+			result.push(part);
+		}
+	}
+	return normalizePath(result.join("/"));
 }

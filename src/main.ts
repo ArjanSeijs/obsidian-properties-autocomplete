@@ -1,5 +1,5 @@
 import {
-	Plugin, PluginSettingTab,
+	Plugin,
 } from 'obsidian';
 import {
 	DEFAULT_SETTINGS,
@@ -14,7 +14,6 @@ export default class AutoPropPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-
 		this.addSettingTab(new PropertySettingsTab(this));
 		this.register(patchPropertyMenu(this))
 		this.registerDomEvent(activeDocument, 'click', (event: MouseEvent) => {

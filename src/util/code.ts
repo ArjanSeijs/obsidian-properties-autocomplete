@@ -29,12 +29,20 @@ export async function evaluateStrategyCode<T>(plugin: AutoPropPlugin, code: stri
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval,obsidianmd/rule-custom-message -- Users own risk, only executed if enabled in settings.
 		let func = new Function(code) as (app: App) => Promise<unknown>;
 		let result = await Promise.race([func(plugin.app), timeout(5000)]);
+
 		if (!Array.isArray(result)) {
 			new Notice("Result is not an array but was: " + typeof result);
-			console.warn("Result is not an array but was: ",);
+			console.warn("Result is not an array but was: ", result);
 			return null;
 		}
-		return result.every(validator) ? result : null;
+
+		if (!result.every(validator)) {
+			new Notice("Result validation failed")
+			console.warn("Result validation failed: ", result);
+			return null;
+		}
+
+		return result
 	} catch (e) {
 		new Notice("Error occurred executing code")
 		console.error(e);

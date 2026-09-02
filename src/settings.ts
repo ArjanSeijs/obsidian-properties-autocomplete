@@ -22,11 +22,9 @@ export const DEFAULT_SETTINGS: AutoPropSettings = {
 
 
 export class PropertySettingsTab extends PluginSettingTab {
-	private plugin: AutoPropPlugin;
 
 	constructor(plugin: AutoPropPlugin) {
 		super(plugin.app, plugin);
-		this.plugin = plugin;
 	}
 
 	getSettingDefinitions(): SettingDefinitionItem[] {

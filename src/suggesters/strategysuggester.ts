@@ -2,13 +2,11 @@ import {
 	AbstractInputSuggest,
 	Component,
 	MarkdownRenderer,
-	normalizePath,
 	Notice,
 	TAbstractFile,
-	TFile,
-	Vault
+	TFile
 } from "obsidian";
-import {getAliases, getFilesInFolder, getMarkdownFilesWithTag, getTags} from "../util/fileutil";
+import {getAliases, getFilesInFolder, getMarkdownFilesWithTag, getTags, pathResolve} from "../util/fileutil";
 import AutoPropPlugin from "../main";
 import {
 	AutoPropStrategy,
@@ -107,7 +105,10 @@ export class StrategySuggester extends AbstractInputSuggest<SuggesterResult> {
 	}
 
 	private* queryFolderSelections(strategy: FileFolderStrategy, query: string) {
-		let files = getFilesInFolder(this.app, strategy.folder, strategy.includeSubFolders);
+		const activeFile = this.app.workspace.getActiveFile();
+		const folder = activeFile != null ? pathResolve(activeFile.parent!.path, strategy.folder) : strategy.folder;
+
+		let files = getFilesInFolder(this.app, folder, strategy.includeSubFolders);
 		yield* this.queryFiles(files, query);
 	}
 
@@ -139,67 +140,55 @@ export class StrategySuggester extends AbstractInputSuggest<SuggesterResult> {
 
 	/*
 	The following logic is applied for the junctions and negation:
-	Querying a negation of a tag gets all files without the tag, - this is the only negation allowed to query directly all
-	other negations need to be part of a junction: TODO: Also prevent this in the settings creation
-	(it should not be really considered a logical negation but more WithoutTagStrategy)
-	Thoughts (1):
-	A negation in a conjunction will filter out all matches after the intersection of the other options had been taken.
-	A negation in a union for now does not make any sense
-
-	A disjunction will take a union of all its sub strategies.
-	A conjunction will take a intersection of all its sub strategies followed by filtering out the negation.
-
-	Thoughts (2):
-	Top conjunction is union of its strategies.
-	Can only contain: TagStrategy, Negation(TagStrategy), ListStrategy, FolderStrategy, CodeStrategy
-
-	The nested disjunction is a intersection of its strategies + filters on the other strategies:
-	Intersection of: TagStrategy, Negation(TagStrategy), ListStrategy, FolderStrategy, CodeStrategy
-	Then filter intersection with Negation(ListStrategy), Negation(FolderStrategy), Negation(CodeStrategy)
-
-	Thoughts (3):
-	Improvement on (2) Split ConjunctionStrategy into a top level CNF provider, using union and intersections,
-	and use deeper CNF as a filter on the providers. Use Different Type.
-
-	Thoughts (4):
-	In case of conjuction and disjuctions etc just get all files and use it as a filter.
+	"Providers" are used as strategies that produce a list of suggestions and can be queried
+	"Filters" can filter list of suggestions. All providers are also filters.
+	The following strategies are providers:
+		Tag, List, Folder, JS, Disjunction, Conjunction (if a substrategies is a provider), Negation of Tag or Folder
+	The following strategies are only filters
+		Conjunction if all its strategies are filters, and negations of lists, disjunctions and conjunctions.
+	Top level strategy needs to be a provider otherwise it is impossible to query.
+	Disjunctions needs all the substrategies to be providers
+	Conjunctions are where the filters come into play as it is here where suggestions are filtered based on the strategies
 	 */
 
 	private async queryDisjunctSuggestions(strategy: DisjunctionStrategy, query: string): Promise<SuggesterResults> {
 		const map = Promise.all(strategy.strategies.map(value => this.querySuggestions(value, query)));
-		return (await map).flat()
+		return (await map).flat().unique()
 	}
 
 	private async queryConjunctSuggestions(strategy: ConjunctionStrategy, query: string): Promise<SuggesterResults> {
 		const {left: providers, right: filters} = partition(strategy.strategies, isProvider)
 		const result = Promise.all(providers.map(provider => this.querySuggestions(provider, query)));
 		const suggestions = intersection((a, b) => testSuggestionEquality(a, b), ...await result);
-		return suggestions.filter(suggestion => this.matchStrategies(suggestion, filters, query))
+		return suggestions.filter(suggestion => this.matchStrategies(suggestion, filters))
 
 	}
 
-	private matchStrategies(suggestion: SuggesterResult, strategies: AutoPropStrategy[], query: string): boolean {
-		return strategies.every(strategy => this.matchStrategy(suggestion, strategy, query))
+	private matchStrategies(suggestion: SuggesterResult, strategies: AutoPropStrategy[]): boolean {
+		return strategies.every(strategy => this.matchStrategy(suggestion, strategy))
 	}
 
-	private matchStrategy(suggestion: SuggesterResult, strategy: AutoPropStrategy, query: string): boolean {
+	private matchStrategy(suggestion: SuggesterResult, strategy: AutoPropStrategy): boolean {
 		switch (strategy.type) {
 			case "List":
 				return strategy.options.some(value => testSuggestionEquality(value, suggestion))
 			case "Tag":
 				return suggestion instanceof TFile &&
-					getTags(this.app, suggestion, strategy.tag)
+					getTags(this.app, suggestion)
 						.some(value => value === strategy.tag || value.startsWith(strategy.tag + '/') && !strategy.exact)
-			case "Folder":
-				return suggestion instanceof TFile && suggestion.path.toLowerCase().includes(query)
+			case "Folder": {
+				const activeFile = this.app.workspace.getActiveFile();
+				const folder = activeFile != null ? pathResolve(activeFile.parent!.path, strategy.folder) : strategy.folder;
+				return suggestion instanceof TFile && suggestion.path.toLowerCase().includes(folder)
+			}
 			case "JS":
 				throw new Error("Code not yet supported here")
 			case "Disjunction":
-				return strategy.strategies.every(strategy => this.matchStrategy(suggestion, strategy, query));
+				return strategy.strategies.every(strategy => this.matchStrategy(suggestion, strategy));
 			case "Conjunction":
-				return strategy.strategies.some(strategy => this.matchStrategy(suggestion, strategy, query));
+				return strategy.strategies.some(strategy => this.matchStrategy(suggestion, strategy));
 			case "Negation":
-				return !this.matchStrategy(suggestion, strategy.strategy, query);
+				return !this.matchStrategy(suggestion, strategy.strategy);
 		}
 	}
 
