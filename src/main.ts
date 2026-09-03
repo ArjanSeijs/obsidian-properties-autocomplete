@@ -7,6 +7,7 @@ import {
 } from './settings';
 import {patchPropertyMenu} from "./patch/propertymenu";
 import {HTMLInputLikeElement, registerStrategySuggester} from "./suggesters/strategysuggester";
+import {patchSuggester} from "./patch/suggester";
 
 
 export default class AutoPropPlugin extends Plugin {
@@ -16,6 +17,7 @@ export default class AutoPropPlugin extends Plugin {
 		await this.loadSettings();
 		this.addSettingTab(new PropertySettingsTab(this));
 		this.register(patchPropertyMenu(this))
+		this.register(patchSuggester(this))
 		this.registerDomEvent(activeDocument, 'click', (event: MouseEvent) => {
 			const target = event.target;
 			if (!(target instanceof HTMLElement)) return;
