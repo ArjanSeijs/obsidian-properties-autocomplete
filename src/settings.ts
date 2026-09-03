@@ -2,13 +2,15 @@ import {ButtonComponent, Modal, Notice, PluginSettingTab, Setting, SettingDefini
 import AutoPropPlugin from "./main";
 import {TagSuggester} from "./suggesters/tagsuggester";
 import {FolderSuggester} from "./suggesters/foldersuggester";
-import {
-	FileFolderStrategy,
-	FileTagStrategy,
-	AutoPropStrategy,
-	StrategyType, ListStrategy, CodeStrategy, DisjunctionStrategy, ConjunctionStrategy, NegationStrategy
-} from "./strategy";
-import {evaluateStrategyCode, validateResult} from "./util/code";
+import {evalAndValidate, validateResult} from "./util/code";
+import {TagStrategy} from "./strategies/tag";
+import {FolderStrategy} from "./strategies/folder";
+import {ListStrategy} from "./strategies/list";
+import {CodeStrategy} from "./strategies/code";
+import {DisjunctionStrategy} from "./strategies/disjunction";
+import {ConjunctionStrategy} from "./strategies/conjunction";
+import {NegationStrategy} from "./strategies/negation";
+import {AutoPropStrategy, StrategyType} from "./strategies";
 
 export interface AutoPropSettings {
 	properties: { [key: string]: AutoPropStrategy };
@@ -123,7 +125,7 @@ export class PropertySettingsModal extends Modal {
 		}
 	}
 
-	private renderTagStrategy(contentEl: HTMLDivElement, strategy: FileTagStrategy) {
+	private renderTagStrategy(contentEl: HTMLDivElement, strategy: TagStrategy) {
 		new Setting(contentEl)
 			.setName('Tag')
 			.setDesc('Select the tag the file should match')
@@ -153,7 +155,7 @@ export class PropertySettingsModal extends Modal {
 
 	}
 
-	private renderFolderStrategy(contentEl: HTMLDivElement, strategy: FileFolderStrategy) {
+	private renderFolderStrategy(contentEl: HTMLDivElement, strategy: FolderStrategy) {
 		new Setting(contentEl)
 			.setName('Folder')
 			.setDesc('Select the folder should match')
@@ -251,7 +253,7 @@ export class PropertySettingsModal extends Modal {
 	private async validate(btn: ButtonComponent, strategy: CodeStrategy) {
 		btn.setIcon('circle-dashed')
 		btn.setDisabled(true);
-		let result = await evaluateStrategyCode(this.plugin, strategy.code, (value) => validateResult(value))
+		let result = await evalAndValidate(this.plugin, strategy.code, (value) => validateResult(value))
 		if (result != null) {
 			new Notice('Code completed successfully.');
 		}
@@ -267,7 +269,7 @@ export class PropertySettingsModal extends Modal {
 			.setDesc('Disjunctions')
 			.addButton(btn =>
 				btn.setIcon('plus').onClick(_ => {
-					strategy.strategies.push(defaultStrategy('Tag') as FileTagStrategy);
+					strategy.strategies.push(defaultStrategy('Tag') as TagStrategy);
 					this.renderStrategyList(strategyListElement, strategy, depth, {or: true});
 				})
 			)
@@ -283,7 +285,7 @@ export class PropertySettingsModal extends Modal {
 			.setDesc('Conjunctions')
 			.addButton(btn =>
 				btn.setIcon('plus').onClick(_ => {
-					strategy.strategies.push(defaultStrategy('Tag') as FileTagStrategy);
+					strategy.strategies.push(defaultStrategy('Tag') as TagStrategy);
 					this.renderStrategyList(strategyListElement, strategy, depth, {and: true});
 				})
 			)
@@ -359,7 +361,7 @@ function defaultStrategy(value: Exclude<StrategyType, ''>): AutoPropStrategy {
 		case "Conjunction":
 			return {type: 'Conjunction', strategies: []}
 		case "Negation":
-			return {type: 'Negation', strategy: defaultStrategy('Tag') as FileTagStrategy}
+			return {type: 'Negation', strategy: defaultStrategy('Tag') as TagStrategy}
 
 	}
 }

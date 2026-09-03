@@ -1,6 +1,8 @@
 import AutoPropPlugin from "../main";
 import {App, Notice, TFile} from "obsidian";
-import {SuggesterResult} from "../suggesters/strategysuggester";
+
+
+import {SuggesterResult} from "../strategies";
 
 export type Validator<T> = (value: unknown) => value is T;
 
@@ -18,8 +20,9 @@ export function timeout(ms: number): Promise<never> {
  * @param plugin
  * @param code
  * @param validator Function output validator
+ * @param ms Timeout in ms
  */
-export async function evaluateStrategyCode<T>(plugin: AutoPropPlugin, code: string, validator: Validator<T>): Promise<T[] | null> {
+export async function evalAndValidate<T>(plugin: AutoPropPlugin, code: string, validator: Validator<T>, ms = 5000): Promise<T[] | null> {
 	if (!plugin.settings.allowJs) {
 		new Notice('Enable JavaScript support in settings.');
 		return null;
@@ -28,7 +31,7 @@ export async function evaluateStrategyCode<T>(plugin: AutoPropPlugin, code: stri
 		// eslint-disable-next-line eslint-comments/no-restricted-disable -- See below
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval,obsidianmd/rule-custom-message -- Users own risk, only executed if enabled in settings.
 		let func = new Function(code) as (app: App) => Promise<unknown>;
-		let result = await Promise.race([func(plugin.app), timeout(5000)]);
+		let result = await Promise.race([func(plugin.app), timeout(ms)]);
 
 		if (!Array.isArray(result)) {
 			new Notice("Result is not an array but was: " + typeof result);
@@ -52,7 +55,7 @@ export async function evaluateStrategyCode<T>(plugin: AutoPropPlugin, code: stri
 
 /**
  * Validator for `evaluateStrategyCode`
- * @see evaluateStrategyCode
+ * @see evalAndValidate
  * @param value
  */
 export function validateResult(value: unknown): value is SuggesterResult {
