@@ -3,7 +3,8 @@ import {getFilesInFolder, pathResolve} from "../util/fileutil";
 import {TFile} from "obsidian";
 
 import {SuggesterResult} from "./index";
-import {Context} from "../patch/suggester";
+
+import {Context} from "../types";
 
 /**
  * Matches file in folder

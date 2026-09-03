@@ -1,7 +1,8 @@
 import AutoPropPlugin from "../main";
 import {AutoPropStrategy, matchStrategy, SuggesterResult} from "./index";
 import {getMarkdownFilesWithTag, pathResolve} from "../util/fileutil";
-import {Context} from "../patch/suggester";
+
+import {Context} from "../types";
 
 /**
  * Negation

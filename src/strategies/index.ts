@@ -14,9 +14,9 @@ import type {NegationStrategy} from "./negation";
 import * as Negation from "./negation";
 import type {TagStrategy} from "./tag";
 import * as Tag from "./tag";
-import {TFile} from "obsidian";
-import {getAliases} from "../util/fileutil";
-import {Context} from "../patch/suggester";
+import {App, prepareFuzzySearch, SearchResult, TFile} from "obsidian";
+
+import {Context, SuggestionResult} from "../types";
 
 export type AutoPropStrategy =
 	TagStrategy
@@ -50,7 +50,7 @@ export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: AutoPro
 	}
 }
 
-export function matchStrategies(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategies: AutoPropStrategy[], context : Context) {
+export function matchStrategies(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategies: AutoPropStrategy[], context: Context) {
 	return strategies.every(strategy => matchStrategy(plugin, suggestion, strategy, context))
 }
 
@@ -74,20 +74,25 @@ export function matchStrategy(plugin: AutoPropPlugin, suggestion: SuggesterResul
 }
 
 export async function queryStrategy(plugin: AutoPropPlugin, strategy: AutoPropStrategy, query: string, context: Context) {
-	query = query.toLowerCase();
 	let results = await evaluateStrategy(plugin, strategy, context);
-	return results.filter(result => matchQuery(plugin, result, query))
+	return results.map(suggestion => fuzzySearchSuggestions(plugin.app, suggestion, prepareFuzzySearch(query))).filter(value => value != null)
 }
 
-function matchQuery(plugin: AutoPropPlugin, value: SuggesterResult, query: string): boolean {
-	if (value instanceof TFile) {
-		const file = value;
-		return file.name.toLowerCase().includes(query)
-			|| getAliases(plugin.app, file).some(value => value.toLowerCase().includes(query))
-	} else if (typeof value === "string") {
-		return value.toLowerCase().includes(query)
+
+function fuzzySearchSuggestions(app: App, suggestion: SuggesterResult, fuzzySearcher: (text: string) => (SearchResult | null)): SuggestionResult | null {
+	if (typeof suggestion === "string") {
+		let result = fuzzySearcher(suggestion);
+		if (!result) return null;
+		return {type: 'text', score: result.score, matches: result.matches, text: suggestion}
+	} else if (suggestion instanceof TFile) {
+		const wikilink = app.fileManager.generateMarkdownLink(suggestion, '/',);
+		let result = fuzzySearcher(wikilink);
+		if (!result) return null;
+		return {type: 'text', score: result.score, matches: result.matches, text: wikilink}
 	} else {
-		return !!value.label && (value.value.toLowerCase().includes(query) || value.label.toLowerCase().includes(query))
+		let result = fuzzySearcher(suggestion.value);
+		if (!result) return null;
+		return {type: 'text', score: result.score, matches: result.matches, text: suggestion.value}
 	}
 }
 

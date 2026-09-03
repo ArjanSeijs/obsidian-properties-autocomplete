@@ -1,16 +1,8 @@
 import {around, dedupe} from "monkey-around";
 import AutoPropPlugin from "../main";
-import {
-	AbstractInputSuggest,
-	App,
-	HistoryHandler,
-	ISuggestOwner,
-	Scope,
-	TFile
-} from "obsidian";
-import {queryStrategy, SuggesterResult} from "../strategies";
-
-type uninstaller = () => void
+import {AbstractInputSuggest} from "obsidian";
+import {queryStrategy} from "../strategies";
+import {ObsidianPropertySuggester, SuggestionResult, uninstaller} from "../types";
 
 export function patchSuggester(plugin: AutoPropPlugin) {
 	// Patch getValue of AbstractInputSuggest to intercept an instance of the Internal PropertySuggester.
@@ -20,7 +12,7 @@ export function patchSuggester(plugin: AutoPropPlugin) {
 			return function () {
 				// @ts-ignore -- This has type any but is a AbstractInputSuggest
 				// this is an instance of abstract input suggester and may be a ObsidianPropertySuggester
-				const instance = this as (AbstractInputSuggest<string> & Partial<ObsidianPropertySuggester<SuggestionType>>);
+				const instance = this as (AbstractInputSuggest<string> & Partial<ObsidianPropertySuggester<SuggestionResult>>);
 				if (isPropertySuggester(instance)) {
 					patches.push(patchGetSuggestions(plugin, instance));
 				}
@@ -34,25 +26,20 @@ export function patchSuggester(plugin: AutoPropPlugin) {
 	}
 }
 
-type SuggestionType = { type: string, text: string, score: number, matches: number[][] };
-
-function patchGetSuggestions(plugin: AutoPropPlugin, obj: ObsidianPropertySuggester<SuggestionType>): () => void {
-	const prototypeOf = Object.getPrototypeOf(obj) as (ObsidianPropertySuggester<SuggestionType>);
+function patchGetSuggestions(plugin: AutoPropPlugin, obj: ObsidianPropertySuggester<SuggestionResult>): () => void {
+	const prototypeOf = Object.getPrototypeOf(obj) as (ObsidianPropertySuggester<SuggestionResult>);
 	return around(prototypeOf, {
-		getSuggestions(old: (query: string) => SuggestionType[] | Promise<SuggestionType[]>) {
+		getSuggestions(old: (query: string) => SuggestionResult[] | Promise<SuggestionResult[]>) {
 			return dedupe("eternal.getSuggestions", old, async function (query: string) {
 				// @ts-ignore -- Instance type
-				const instance = this as ObsidianPropertySuggester<SuggestionType>;
+				const instance = this as ObsidianPropertySuggester<SuggestionResult>;
+
 				if (isPropertySuggester(instance)) {
-					const results = await old.call(instance, query);
-					const property = instance.context.key.toLowerCase();
-					const strategy = plugin.settings.properties[property];
-					if (strategy) {
-						let additional = await queryStrategy(plugin, strategy, query, instance.context);
-						let suggestions = additional.map(suggestion => convertSuggestion(plugin.app, suggestion));
-						results.push(...suggestions);
+					try {
+						return await getAdditionalSuggestions(old, instance, query, plugin);
+					} catch (error) {
+						console.error(error);
 					}
-					return results;
 				}
 				return old.call(instance, query);
 			})
@@ -60,15 +47,15 @@ function patchGetSuggestions(plugin: AutoPropPlugin, obj: ObsidianPropertySugges
 	})
 }
 
-function convertSuggestion(app: App, suggestion: SuggesterResult): SuggestionType {
-	if (typeof suggestion === "string") {
-		return {type: 'text', score: 10, matches: [], text: suggestion}
-	} else if (suggestion instanceof TFile) {
-		const wikilink = app.fileManager.generateMarkdownLink(suggestion, '/',);
-		return {type: 'text', score: 10, matches: [], text: wikilink}
-	} else {
-		return {type: 'text', score: 10, matches: [], text: suggestion.value}
+async function getAdditionalSuggestions(old: (query: string) => (SuggestionResult[] | Promise<SuggestionResult[]>), instance: ObsidianPropertySuggester<SuggestionResult>, query: string, plugin: AutoPropPlugin) {
+	const results = await old.call(instance, query);
+	const property = instance.context.key.toLowerCase();
+	const strategy = plugin.settings.properties[property]?.strategy;
+	if (strategy) {
+		let additional = await queryStrategy(plugin, strategy, query, instance.context);
+		results.push(...additional);
 	}
+	return results;
 }
 
 function isPropertySuggester<T>(instance: Partial<ObsidianPropertySuggester<T>>): instance is ObsidianPropertySuggester<T> {
@@ -80,75 +67,3 @@ function isPropertySuggester<T>(instance: Partial<ObsidianPropertySuggester<T>>)
 		suggestEl.hasClass('mod-property-value')
 }
 
-export type Context = { key: string, hoverSource: string, sourcePath: string };
-
-/**
- * PopoverSuggester + AbstractInputSuggester + internal api for property suggester.
- */
-interface ObsidianPropertySuggester<T> extends ISuggestOwner<T>, HistoryHandler {
-
-	/* == Internal API == */
-	suggestEl: HTMLElement
-
-	context: Context
-
-	/* == PopOver + AbstractInput == */
-
-	/** @public */
-	app: App;
-	/** @public */
-	scope: Scope;
-	/**
-	 * Limit to the number of elements rendered at once. Set to 0 to disable. Defaults to 100.
-	 * @public
-	 * @since 1.4.10
-	 */
-	limit: number;
-
-	/** @public */
-	open(): void;
-
-	/** @public */
-	close(): void;
-
-	/**
-	 * Sets the value into the input element.
-	 * @public
-	 * @since 1.4.10
-	 */
-	setValue(value: string): void;
-
-	/**
-	 * Gets the value from the input element.
-	 * @public
-	 * @since 1.4.10
-	 */
-	getValue(): string;
-
-	/**
-	 * @inheritDoc
-	 * @param query
-	 */
-	getSuggestions(query: string): T[] | Promise<T[]>;
-
-	/**
-	 * @inheritDoc
-	 * @public
-	 */
-	renderSuggestion(value: T, el: HTMLElement): void;
-
-	/**
-	 * @public
-	 * @since 1.6.6
-	 */
-	selectSuggestion(value: T, evt: MouseEvent | KeyboardEvent): void;
-
-	/**
-	 * Registers a callback to handle when a suggestion is selected by the user.
-	 * @public
-	 * @since 1.4.10
-	 */
-	onSelect(callback: (value: T, evt: MouseEvent | KeyboardEvent) => void): this;
-
-
-}

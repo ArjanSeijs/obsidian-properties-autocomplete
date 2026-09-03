@@ -8,7 +8,8 @@ import {
 	testSuggestionEquality
 } from "./index";
 import {intersection, partition} from "../util/listutil";
-import { Context } from "../patch/suggester";
+
+import {Context} from "../types";
 
 /**
  * And / Intersection
