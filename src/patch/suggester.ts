@@ -10,22 +10,28 @@ import {
 } from "obsidian";
 import {queryStrategy, SuggesterResult} from "../strategies";
 
+type uninstaller = () => void
 
 export function patchSuggester(plugin: AutoPropPlugin) {
 	// Patch getValue of AbstractInputSuggest to intercept an instance of the Internal PropertySuggester.
-	return around(AbstractInputSuggest.prototype, {
+	let patches: uninstaller[] = []
+	let uninstaller = around(AbstractInputSuggest.prototype, {
 		getValue(old: () => string) {
 			return function () {
 				// @ts-ignore -- This has type any but is a AbstractInputSuggest
 				// this is an instance of abstract input suggester and may be a ObsidianPropertySuggester
 				const instance = this as (AbstractInputSuggest<string> & Partial<ObsidianPropertySuggester<SuggestionType>>);
 				if (isPropertySuggester(instance)) {
-					patchGetSuggestions(plugin, instance)
+					patches.push(patchGetSuggestions(plugin, instance));
 				}
 				return old.call(instance)
 			}
 		}
 	});
+	return () => {
+		patches.forEach(patch => patch())
+		uninstaller();
+	}
 }
 
 type SuggestionType = { type: string, text: string, score: number, matches: number[][] };
@@ -42,7 +48,7 @@ function patchGetSuggestions(plugin: AutoPropPlugin, obj: ObsidianPropertySugges
 					const property = instance.context.key.toLowerCase();
 					const strategy = plugin.settings.properties[property];
 					if (strategy) {
-						let additional = await queryStrategy(plugin, strategy, query);
+						let additional = await queryStrategy(plugin, strategy, query, instance.context);
 						let suggestions = additional.map(suggestion => convertSuggestion(plugin.app, suggestion));
 						results.push(...suggestions);
 					}
@@ -74,6 +80,8 @@ function isPropertySuggester<T>(instance: Partial<ObsidianPropertySuggester<T>>)
 		suggestEl.hasClass('mod-property-value')
 }
 
+export type Context = { key: string, hoverSource: string, sourcePath: string };
+
 /**
  * PopoverSuggester + AbstractInputSuggester + internal api for property suggester.
  */
@@ -82,7 +90,7 @@ interface ObsidianPropertySuggester<T> extends ISuggestOwner<T>, HistoryHandler 
 	/* == Internal API == */
 	suggestEl: HTMLElement
 
-	context: { key: string, hoverSource: string, sourcePath: string }
+	context: Context
 
 	/* == PopOver + AbstractInput == */
 

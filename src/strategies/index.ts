@@ -16,6 +16,7 @@ import type {TagStrategy} from "./tag";
 import * as Tag from "./tag";
 import {TFile} from "obsidian";
 import {getAliases} from "../util/fileutil";
+import {Context} from "../patch/suggester";
 
 export type AutoPropStrategy =
 	TagStrategy
@@ -29,51 +30,52 @@ export type StrategyType = AutoPropStrategy['type']
 export type SuggesterResult = TFile | string | { label: string, value: string };
 export type SuggesterResults = SuggesterResult[]
 
-export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: AutoPropStrategy): Promise<SuggesterResults> {
+export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: AutoPropStrategy, context: Context): Promise<SuggesterResults> {
 	switch (strategy.type) {
 		case "List":
 			return List.evaluate(plugin, strategy)
 		case "Tag":
 			return Tag.evaluate(plugin, strategy)
 		case "Folder":
-			return Folder.evaluate(plugin, strategy)
+			return Folder.evaluate(plugin, strategy, context)
 		case "JS":
 			return Code.evaluate(plugin, strategy)
 		case "Disjunction":
-			return Disjunction.evaluate(plugin, strategy)
+			return Disjunction.evaluate(plugin, strategy, context)
 		case "Conjunction":
-			return Conjunction.evaluate(plugin, strategy);
+			return Conjunction.evaluate(plugin, strategy, context);
 		case "Negation":
-			return Negation.evaluate(plugin, strategy);
+			return Negation.evaluate(plugin, strategy, context);
 
 	}
 }
 
-export function matchStrategies(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategies: AutoPropStrategy[]) {
-	return strategies.every(strategy => matchStrategy(plugin, suggestion, strategy))
+export function matchStrategies(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategies: AutoPropStrategy[], context : Context) {
+	return strategies.every(strategy => matchStrategy(plugin, suggestion, strategy, context))
 }
 
-export function matchStrategy(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategy: AutoPropStrategy): boolean {
+export function matchStrategy(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategy: AutoPropStrategy, context: Context): boolean {
 	switch (strategy.type) {
 		case "List":
 			return List.match(plugin, suggestion, strategy)
 		case "Tag":
 			return Tag.match(plugin, suggestion, strategy)
 		case "Folder":
-			return Folder.match(plugin, suggestion, strategy)
+			return Folder.match(plugin, suggestion, strategy, context)
 		case "JS":
 			return Code.match(plugin, suggestion, strategy)
 		case "Disjunction":
-			return Disjunction.match(plugin, suggestion, strategy)
+			return Disjunction.match(plugin, suggestion, strategy, context)
 		case "Conjunction":
-			return Conjunction.match(plugin, suggestion, strategy);
+			return Conjunction.match(plugin, suggestion, strategy, context);
 		case "Negation":
 			return Negation.match(plugin, suggestion, strategy);
 	}
 }
 
-export async function queryStrategy(plugin: AutoPropPlugin, strategy: AutoPropStrategy, query: string) {
-	let results = await evaluateStrategy(plugin, strategy);
+export async function queryStrategy(plugin: AutoPropPlugin, strategy: AutoPropStrategy, query: string, context: Context) {
+	query = query.toLowerCase();
+	let results = await evaluateStrategy(plugin, strategy, context);
 	return results.filter(result => matchQuery(plugin, result, query))
 }
 

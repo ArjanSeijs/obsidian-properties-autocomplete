@@ -66,7 +66,12 @@ export function pathResolve(...paths: string[]) {
 	let normalized = paths.map(normalizePath);
 
 	// Find last absolute path
-	let start = Math.max(0, normalized.findLastIndex(path => !path.startsWith(".")));
+	let start = Math.max(0, normalized.findLastIndex(path =>
+		!path.startsWith("./") &&
+		!path.startsWith("../") &&
+		path !== "." &&
+		path !== ".."
+	));
 	let parts = normalized
 		.slice(start)
 		.map(path => path.split("/"))

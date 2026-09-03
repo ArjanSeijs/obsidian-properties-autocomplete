@@ -1,7 +1,7 @@
-
 import AutoPropPlugin from "../main";
 import {AutoPropStrategy, matchStrategy, SuggesterResult} from "./index";
-import {getMarkdownFilesWithTag} from "../util/fileutil";
+import {getMarkdownFilesWithTag, pathResolve} from "../util/fileutil";
+import {Context} from "../patch/suggester";
 
 /**
  * Negation
@@ -12,15 +12,18 @@ export interface NegationStrategy {
 }
 
 
-export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy) {
+export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, context: Context) {
+
 	let subStrategy = strategy.strategy;
 	switch (subStrategy.type) {
 		case "List":
 			throw new Error("Cannot query negation of list")
 		case "Tag":
 			return [...getMarkdownFilesWithTag(plugin.app, subStrategy.tag, subStrategy.exact, true)]
-		case "Folder":
-			return plugin.app.vault.getMarkdownFiles().filter(value => !value.path.includes(subStrategy.folder))
+		case "Folder": {
+			const folder = pathResolve(context.sourcePath, "..", subStrategy.folder);
+			return plugin.app.vault.getMarkdownFiles().filter(value => !value.path.includes(folder))
+		}
 		case "JS":
 			throw new Error("Cannot query negation of code list")
 		case "Disjunction":
@@ -30,6 +33,6 @@ export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy) {
 	}
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategy: NegationStrategy): boolean {
-	return !matchStrategy(plugin, suggestion, strategy.strategy);
+export function match(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategy: NegationStrategy, context : Context): boolean {
+	return !matchStrategy(plugin, suggestion, strategy.strategy, context);
 }
