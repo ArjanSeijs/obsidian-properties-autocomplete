@@ -27,7 +27,7 @@ export type AutoPropStrategy =
 	| ConjunctionStrategy
 	| NegationStrategy
 export type StrategyType = AutoPropStrategy['type']
-export type SuggesterResult = TFile | string | { label: string, value: string };
+export type SuggesterResult = TFile | string | { label?: string, value: string };
 export type SuggesterResults = SuggesterResult[]
 
 export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: AutoPropStrategy, context: Context): Promise<SuggesterResults> {
@@ -69,7 +69,7 @@ export function matchStrategy(plugin: AutoPropPlugin, suggestion: SuggesterResul
 		case "Conjunction":
 			return Conjunction.match(plugin, suggestion, strategy, context);
 		case "Negation":
-			return Negation.match(plugin, suggestion, strategy);
+			return Negation.match(plugin, suggestion, strategy, context);
 	}
 }
 
@@ -87,7 +87,7 @@ function matchQuery(plugin: AutoPropPlugin, value: SuggesterResult, query: strin
 	} else if (typeof value === "string") {
 		return value.toLowerCase().includes(query)
 	} else {
-		return value.value.toLowerCase().includes(query) || value.label.toLowerCase().includes(query)
+		return !!value.label && (value.value.toLowerCase().includes(query) || value.label.toLowerCase().includes(query))
 	}
 }
 

@@ -6,7 +6,7 @@ import {SuggesterResult, testSuggestionEquality} from "./index";
  */
 export interface ListStrategy {
 	type: 'List'
-	options: { label: string, value: string }[];
+	options: { label?: string, value: string }[];
 }
 
 export function evaluate(_: AutoPropPlugin, listStrategy: ListStrategy) {

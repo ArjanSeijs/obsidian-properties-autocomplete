@@ -1,4 +1,11 @@
-import {ButtonComponent, Modal, Notice, PluginSettingTab, Setting, SettingDefinitionItem} from "obsidian";
+import {
+	ButtonComponent, DisplayValueComponent,
+	Modal,
+	Notice,
+	PluginSettingTab, setIcon,
+	Setting,
+	SettingDefinitionItem
+} from "obsidian";
 import AutoPropPlugin from "./main";
 import {TagSuggester} from "./suggesters/tagsuggester";
 import {FolderSuggester} from "./suggesters/foldersuggester";
@@ -11,15 +18,21 @@ import {DisjunctionStrategy} from "./strategies/disjunction";
 import {ConjunctionStrategy} from "./strategies/conjunction";
 import {NegationStrategy} from "./strategies/negation";
 import {AutoPropStrategy, StrategyType} from "./strategies";
+import {IconSuggester} from "./suggesters/iconsuggester";
+
+type PropertySetting = { strategy?: AutoPropStrategy, icon?: string };
 
 export interface AutoPropSettings {
-	properties: { [key: string]: AutoPropStrategy };
+	properties: { [key: string]: PropertySetting };
 	allowJs: boolean;
+	// In case of migrating configs to newer version.
+	version: string
 }
 
 export const DEFAULT_SETTINGS: AutoPropSettings = {
+	version: "1.0.0",
 	properties: {},
-	allowJs: false
+	allowJs: false,
 };
 
 
@@ -50,24 +63,52 @@ export class PropertySettingsModal extends Modal {
 		this.render();
 	}
 
-	get properties() {
-		return this.plugin.settings.properties
+
+	get settings() {
+		return this.plugin.settings.properties;
 	}
 
-	get propertyStrategy() {
-		return this.plugin.settings.properties[this.property];
+	get strategy() {
+		return this.settings[this.property]?.strategy;
 	}
 
-	set propertyStrategy(value: AutoPropStrategy | undefined) {
-		if (value) this.plugin.settings.properties[this.property] = value;
-		else delete this.plugin.settings.properties[this.property];
+	get icon() {
+		return this.settings[this.property]?.icon;
+	}
+
+	set strategy(value: AutoPropStrategy | undefined) {
+		let setting = this.ensureSetting(this.property)
+		setting.strategy = value;
+		this.cleanupSetting(this.property);
+	}
+
+	set icon(value: string | undefined) {
+		let setting = this.ensureSetting(this.property)
+		setting.icon = value;
+		this.cleanupSetting(this.property);
+	}
+
+	private ensureSetting(property: string): PropertySetting {
+		let setting = this.settings[property];
+		if (!setting) {
+			setting = {};
+			this.settings[property] = setting;
+		}
+		return setting;
+	}
+
+	private cleanupSetting(property: string) {
+		if (this.settings[property]?.icon === undefined && this.settings[property]?.strategy === undefined) {
+			delete this.settings[property];
+		}
 	}
 
 	render() {
 		this.contentEl.empty()
+		this.renderIconSelection(this.contentEl)
 		this.renderStrategySelector(this.contentEl,
-			(value) => this.propertyStrategy = value,
-			() => this.propertyStrategy, 0);
+			(value) => this.strategy = value,
+			() => this.strategy, 0);
 	}
 
 
@@ -203,7 +244,7 @@ export class PropertySettingsModal extends Modal {
 		for (let i = 0; i < strategy.options.length; i++) {
 			let option = strategy.options[i]!;
 			new Setting(element)
-				.addText(txt => txt.setPlaceholder('Label').setValue(option.label)
+				.addText(txt => txt.setPlaceholder('Label').setValue(option.label ?? '')
 					.onChange(async value => {
 						option.label = value;
 						await this.plugin.saveSettings();
@@ -342,6 +383,35 @@ export class PropertySettingsModal extends Modal {
 		this.renderStrategySelector(element,
 			(value) => strategy.strategy = (value as Exclude<AutoPropStrategy, NegationStrategy>) ?? strategy.strategy,
 			() => strategy.strategy, depth + 1, {negation: true, js: true})
+	}
+
+	private renderIconSelection(contentEl: HTMLElement) {
+		let button: DisplayValueComponent | undefined;
+		new Setting(contentEl)
+			.setName('Icon')
+			.setDesc('Property icon')
+			.addDisplayValue(btn => {
+					if (this.icon) setIcon(btn.valueEl, this.icon)
+					button = btn;
+				}
+			)
+			.addText(text => {
+				text.setValue(this.icon ?? '')
+					.onChange(value => {
+						this.icon = value ?? undefined;
+						if (button && this.icon) setIcon(button.valueEl, this.icon)
+					})
+
+				let suggester = new IconSuggester(this.app, text.inputEl)
+				suggester.onSelect(value => {
+					text.setValue(value);
+					this.icon = value ?? undefined;
+					if (button && this.icon) setIcon(button.valueEl, this.icon)
+					suggester.close();
+				}).open();
+
+			})
+
 	}
 }
 
