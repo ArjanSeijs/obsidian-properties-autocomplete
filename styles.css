@@ -21,9 +21,21 @@ If your plugin does not need CSS, delete this file.
 }
 
 .strategy-nested.depth-2 {
-	background-color: var(--color-base-50);)
+	background-color: var(--color-base-50);
 }
 
-.icon-item {
+.suggestion-item-icon {
 	padding: 5px;
+}
+
+.suggestion-item-text {
+	padding-left: 5px;
+}
+
+.custom-color {
+	background-color: var(--custom-color);
+}
+
+.custom-color.is-selected {
+	background-color: color-mix(in hsl, var(--background-modifier-hover), var(--custom-color));
 }

@@ -1,10 +1,10 @@
 import type AutoPropPlugin from "../main";
 import {
-	AutoPropStrategy,
+	SuggestionStrategy,
 	evaluateStrategy,
 	matchStrategies,
 	matchStrategy,
-	SuggesterResult,
+	StrategySuggestionResult,
 	testSuggestionEquality
 } from "./index";
 import {intersection, partition} from "../util/listutil";
@@ -16,7 +16,7 @@ import {Context} from "../types";
  */
 export interface ConjunctionStrategy {
 	type: 'Conjunction'
-	strategies: Exclude<AutoPropStrategy, ConjunctionStrategy>[]
+	strategies: Exclude<SuggestionStrategy, ConjunctionStrategy>[]
 }
 
 export async function evaluate(plugin: AutoPropPlugin, strategy: ConjunctionStrategy, context: Context) {
@@ -27,12 +27,12 @@ export async function evaluate(plugin: AutoPropPlugin, strategy: ConjunctionStra
 	return suggestions.filter(suggestions => matchStrategies(plugin, suggestions, filters, context))
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategy: ConjunctionStrategy, context: Context): boolean {
+export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: ConjunctionStrategy, context: Context): boolean {
 	const strategies = strategy.strategies;
 	return strategies.every(strategy => matchStrategy(plugin, suggestion, strategy, context));
 }
 
-function isProvider(value: AutoPropStrategy): boolean {
+function isProvider(value: SuggestionStrategy): boolean {
 	switch (value.type) {
 		case "List":
 		case "Tag":

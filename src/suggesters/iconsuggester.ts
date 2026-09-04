@@ -16,8 +16,8 @@ export class IconSuggester extends AbstractInputSuggest<string> {
 	renderSuggestion(icon: string, el: HTMLElement): void {
 		const iconEl = el.createSpan();
 		const textEl = el.createSpan();
-		iconEl.addClass('icon-item')
-		textEl.addClass('icon-item')
+		iconEl.addClass('suggestion-item-icon')
+		textEl.addClass('suggestion-item-text')
 		setIcon(iconEl, icon)
 		textEl.setText(icon);
 	}

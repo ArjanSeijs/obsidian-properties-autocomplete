@@ -1,5 +1,5 @@
 import AutoPropPlugin from "../main";
-import {AutoPropStrategy, evaluateStrategy, matchStrategy, SuggesterResult} from "./index";
+import {SuggestionStrategy, evaluateStrategy, matchStrategy, StrategySuggestionResult} from "./index";
 import {Context} from "../types";
 
 /**
@@ -7,7 +7,7 @@ import {Context} from "../types";
  */
 export interface DisjunctionStrategy {
 	type: 'Disjunction'
-	strategies: Exclude<AutoPropStrategy, DisjunctionStrategy>[]
+	strategies: Exclude<SuggestionStrategy, DisjunctionStrategy>[]
 }
 
 export async function evaluate(plugin: AutoPropPlugin, disjunctionStrategy: DisjunctionStrategy, context: Context) {
@@ -15,6 +15,6 @@ export async function evaluate(plugin: AutoPropPlugin, disjunctionStrategy: Disj
 	return results.flat().unique()
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategy: DisjunctionStrategy, context: Context): boolean {
+export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: DisjunctionStrategy, context: Context): boolean {
 	return strategy.strategies.some(strategy => matchStrategy(plugin, suggestion, strategy, context));
 }

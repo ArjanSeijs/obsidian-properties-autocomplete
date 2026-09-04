@@ -1,5 +1,5 @@
 import AutoPropPlugin from "../main";
-import {AutoPropStrategy, matchStrategy, SuggesterResult} from "./index";
+import {SuggestionStrategy, matchStrategy, StrategySuggestionResult} from "./index";
 import {getMarkdownFilesWithTag, pathResolve} from "../util/fileutil";
 
 import {Context} from "../types";
@@ -9,7 +9,7 @@ import {Context} from "../types";
  */
 export interface NegationStrategy {
 	type: 'Negation'
-	strategy: Exclude<AutoPropStrategy, NegationStrategy>
+	strategy: Exclude<SuggestionStrategy, NegationStrategy>
 }
 
 
@@ -34,6 +34,6 @@ export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, con
 	}
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategy: NegationStrategy, context : Context): boolean {
+export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: NegationStrategy, context : Context): boolean {
 	return !matchStrategy(plugin, suggestion, strategy.strategy, context);
 }

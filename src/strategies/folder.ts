@@ -2,7 +2,7 @@ import AutoPropPlugin from "../main";
 import {getFilesInFolder, pathResolve} from "../util/fileutil";
 import {TFile} from "obsidian";
 
-import {SuggesterResult} from "./index";
+import {StrategySuggestionResult} from "./index";
 
 import {Context} from "../types";
 
@@ -21,7 +21,7 @@ export function evaluate(plugin: AutoPropPlugin, strategy: FolderStrategy, conte
 	return getFilesInFolder(plugin.app, folder, strategy.includeSubFolders).filter(value => value instanceof TFile);
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategy: FolderStrategy, context: Context): boolean {
+export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: FolderStrategy, context: Context): boolean {
 	const folder = pathResolve(context.sourcePath, "..", strategy.folder);
 	return suggestion instanceof TFile && suggestion.path.toLowerCase().includes(folder)
 }

@@ -17,10 +17,10 @@ import {CodeStrategy} from "./strategies/code";
 import {DisjunctionStrategy} from "./strategies/disjunction";
 import {ConjunctionStrategy} from "./strategies/conjunction";
 import {NegationStrategy} from "./strategies/negation";
-import {AutoPropStrategy, StrategyType} from "./strategies";
+import {SuggestionStrategy, SuggestionStrategyType} from "./strategies";
 import {IconSuggester} from "./suggesters/iconsuggester";
 
-type PropertySetting = { strategy?: AutoPropStrategy, icon?: string };
+type PropertySetting = { strategy?: SuggestionStrategy, icon?: string };
 
 export interface AutoPropSettings {
 	properties: { [key: string]: PropertySetting };
@@ -44,11 +44,16 @@ export class PropertySettingsTab extends PluginSettingTab {
 
 	getSettingDefinitions(): SettingDefinitionItem[] {
 		return [
-			{name: 'AllowJSCode', control: {type: 'toggle', key: 'allowJs'}}
+			{
+				name: 'Allow Javascript',
+				desc: 'Enable execution of custom user scripts for suggestions',
+				control: {type: 'toggle', key: 'allowJs'}
+			}
 		];
 	}
 }
 
+// If true do net render
 type RenderStrategyArgs = {
 	negation?: boolean
 	and?: boolean
@@ -76,7 +81,7 @@ export class PropertySettingsModal extends Modal {
 		return this.settings[this.property]?.icon;
 	}
 
-	set strategy(value: AutoPropStrategy | undefined) {
+	set strategy(value: SuggestionStrategy | undefined) {
 		let setting = this.ensureSetting(this.property)
 		setting.strategy = value;
 		this.cleanupSetting(this.property);
@@ -105,14 +110,14 @@ export class PropertySettingsModal extends Modal {
 
 	render() {
 		this.contentEl.empty()
-		this.renderIconSelection(this.contentEl)
+		this.renderAppearanceSelection(this.contentEl)
 		this.renderStrategySelector(this.contentEl,
 			(value) => this.strategy = value,
 			() => this.strategy, 0);
 	}
 
 
-	renderStrategySelector(contentEl: HTMLElement, setValue: (cb: AutoPropStrategy | undefined) => void, getValue: () => AutoPropStrategy | undefined, depth: number, options: RenderStrategyArgs = {}) {
+	renderStrategySelector(contentEl: HTMLElement, setValue: (cb: SuggestionStrategy | undefined) => void, getValue: () => SuggestionStrategy | undefined, depth: number, options: RenderStrategyArgs = {}) {
 		const setting = new Setting(contentEl)
 		const strategyContentEl = contentEl.createDiv();
 		setting
@@ -134,7 +139,7 @@ export class PropertySettingsModal extends Modal {
 						if (value === '') {
 							setValue(undefined)
 						} else {
-							setValue(defaultStrategy(value as StrategyType));
+							setValue(defaultStrategy(value as SuggestionStrategyType));
 						}
 						this.renderStrategy(strategyContentEl, getValue(), depth);
 						await this.plugin.saveSettings();
@@ -144,8 +149,9 @@ export class PropertySettingsModal extends Modal {
 
 	}
 
-	private renderStrategy(contentEl: HTMLDivElement, value: AutoPropStrategy | undefined, depth: number) {
+	private renderStrategy(contentEl: HTMLDivElement, value: SuggestionStrategy | undefined, depth: number) {
 		contentEl.empty();
+		contentEl.addClass(`depth-${depth % 3}`, 'strategy-nested');
 		switch (value?.type) {
 			case "Tag":
 				return this.renderTagStrategy(contentEl, value)
@@ -255,6 +261,12 @@ export class PropertySettingsModal extends Modal {
 						option.value = value;
 						await this.plugin.saveSettings();
 					}))
+				.addColorPicker(color => color.setValue(option.color ?? '#000000')
+					.onChange(async value => {
+						option.color = value !== '#000000' ? value : undefined;
+						await this.plugin.saveSettings();
+					})
+				)
 				.addButton(btn => btn.setIcon('move-up').onClick(async _ => {
 					let swap = strategy.options[i]!;
 					strategy.options[i] = strategy.options[i - 1]!;
@@ -381,15 +393,15 @@ export class PropertySettingsModal extends Modal {
 		const element = contentEl.createDiv();
 		element.addClass(`depth-${depth % 3}`, 'strategy-nested');
 		this.renderStrategySelector(element,
-			(value) => strategy.strategy = (value as Exclude<AutoPropStrategy, NegationStrategy>) ?? strategy.strategy,
+			(value) => strategy.strategy = (value as Exclude<SuggestionStrategy, NegationStrategy>) ?? strategy.strategy,
 			() => strategy.strategy, depth + 1, {negation: true, js: true})
 	}
 
-	private renderIconSelection(contentEl: HTMLElement) {
+	private renderAppearanceSelection(contentEl: HTMLElement) {
 		let button: DisplayValueComponent | undefined;
 		new Setting(contentEl)
-			.setName('Icon')
-			.setDesc('Property icon')
+			.setName('Appearance')
+			.setDesc('Property icon and color')
 			.addDisplayValue(btn => {
 					if (this.icon) setIcon(btn.valueEl, this.icon)
 					button = btn;
@@ -402,12 +414,13 @@ export class PropertySettingsModal extends Modal {
 						if (button && this.icon) setIcon(button.valueEl, this.icon)
 					})
 				let suggester = new IconSuggester(this.app, text.inputEl)
-				suggester.onSelect(value => {
+				suggester.onSelect(async value => {
 					text.setValue(value);
 					this.icon = value ?? undefined;
 					if (button && this.icon) setIcon(button.valueEl, this.icon)
 					suggester.close();
 					this.plugin.applyIcons()
+					await this.plugin.saveSettings()
 				})
 
 			})
@@ -416,7 +429,7 @@ export class PropertySettingsModal extends Modal {
 }
 
 
-function defaultStrategy(value: Exclude<StrategyType, ''>): AutoPropStrategy {
+function defaultStrategy(value: Exclude<SuggestionStrategyType, ''>): SuggestionStrategy {
 	switch (value) {
 		case "Tag":
 			return {type: 'Tag', tag: '', exact: true};

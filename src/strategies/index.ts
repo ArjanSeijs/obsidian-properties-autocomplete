@@ -18,7 +18,7 @@ import {App, prepareFuzzySearch, SearchResult, TFile} from "obsidian";
 
 import {Context, SuggestionResult} from "../types";
 
-export type AutoPropStrategy =
+export type SuggestionStrategy =
 	TagStrategy
 	| FolderStrategy
 	| ListStrategy
@@ -26,11 +26,11 @@ export type AutoPropStrategy =
 	| DisjunctionStrategy
 	| ConjunctionStrategy
 	| NegationStrategy
-export type StrategyType = AutoPropStrategy['type']
-export type SuggesterResult = TFile | string | ListItem;
-export type SuggesterResults = SuggesterResult[]
+export type SuggestionStrategyType = SuggestionStrategy['type']
+export type StrategySuggestionResult = TFile | string | ListItem;
+export type StrategySuggestionResults = StrategySuggestionResult[]
 
-export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: AutoPropStrategy, context: Context): Promise<SuggesterResults> {
+export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: SuggestionStrategy, context: Context): Promise<StrategySuggestionResults> {
 	switch (strategy.type) {
 		case "List":
 			return List.evaluate(plugin, strategy)
@@ -50,11 +50,11 @@ export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: AutoPro
 	}
 }
 
-export function matchStrategies(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategies: AutoPropStrategy[], context: Context) {
+export function matchStrategies(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategies: SuggestionStrategy[], context: Context) {
 	return strategies.every(strategy => matchStrategy(plugin, suggestion, strategy, context))
 }
 
-export function matchStrategy(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategy: AutoPropStrategy, context: Context): boolean {
+export function matchStrategy(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: SuggestionStrategy, context: Context): boolean {
 	switch (strategy.type) {
 		case "List":
 			return List.match(plugin, suggestion, strategy)
@@ -73,13 +73,13 @@ export function matchStrategy(plugin: AutoPropPlugin, suggestion: SuggesterResul
 	}
 }
 
-export async function queryStrategy(plugin: AutoPropPlugin, strategy: AutoPropStrategy, query: string, context: Context) {
+export async function queryStrategy(plugin: AutoPropPlugin, strategy: SuggestionStrategy, query: string, context: Context) {
 	let results = await evaluateStrategy(plugin, strategy, context);
 	return results.map(suggestion => fuzzySearchSuggestions(plugin.app, suggestion, prepareFuzzySearch(query))).filter(value => value != null)
 }
 
 
-function fuzzySearchSuggestions(app: App, suggestion: SuggesterResult, fuzzySearcher: (text: string) => (SearchResult | null)): SuggestionResult | null {
+function fuzzySearchSuggestions(app: App, suggestion: StrategySuggestionResult, fuzzySearcher: (text: string) => (SearchResult | null)): SuggestionResult | null {
 	if (typeof suggestion === "string") {
 		let result = fuzzySearcher(suggestion);
 		if (!result) return null;
@@ -92,20 +92,19 @@ function fuzzySearchSuggestions(app: App, suggestion: SuggesterResult, fuzzySear
 	} else {
 		let resultValue = fuzzySearcher(suggestion.value);
 		let resultLabel = suggestion.label ? fuzzySearcher(suggestion.label) : null
-		let result = resultValue ?? resultLabel;
+		let result = resultLabel ?? resultValue ;
 		if (!result) return null;
-		if (resultLabel && resultLabel.score > result.score) result = resultLabel;
 		return {
 			type: 'text',
 			score: result.score,
 			matches: result.matches,
-			text: suggestion.value,
-			customData: {label: suggestion.label, color: suggestion.color}
+			text: suggestion.label ?? suggestion.value,
+			customData: {color: suggestion.color, actualValue: suggestion.label ? suggestion.value : undefined}
 		}
 	}
 }
 
-export function testSuggestionEquality(a: SuggesterResult, b: SuggesterResult) {
+export function testSuggestionEquality(a: StrategySuggestionResult, b: StrategySuggestionResult) {
 	if (a instanceof TFile) {
 		if (!(b instanceof TFile)) return false;
 		return a.path === b.path

@@ -59,6 +59,21 @@ function patchGetSuggestions(plugin: AutoPropPlugin, obj: ObsidianPropertySugges
 				}
 				return original.call(instance, value, el);
 			})
+		},
+		selectSuggestion(original) {
+			return dedupe(MONKEY_KEY + '.selectSuggestion', original, function (value, el) {
+
+				// @ts-ignore -- Instance type
+				const instance = this as ObsidianPropertySuggester<SuggestionResult>;
+				if (isPropertySuggester(instance)) {
+					try {
+						return selectSuggestionPatch(instance, original, value, el);
+					} catch (error) {
+						console.error(error);
+					}
+				}
+				return original.call(instance, value, el);
+			})
 		}
 	})
 }
@@ -76,7 +91,6 @@ async function getSuggestionsPatch(instance: ObsidianPropertySuggester<Suggestio
 	const strategy = plugin.settings.properties[property]?.strategy;
 	if (strategy) {
 		let additional = await queryStrategy(plugin, strategy, query, instance.context);
-		additional = additional.filter(value => results.every(other => other.text !== value.text));
 		results.push(...additional);
 	}
 	return results;
@@ -85,13 +99,22 @@ async function getSuggestionsPatch(instance: ObsidianPropertySuggester<Suggestio
 function renderSuggestionPatch(instance: ObsidianPropertySuggester<SuggestionResult>, original: (value: SuggestionResult, el: HTMLElement) => void, value: SuggestionResult, el: HTMLElement) {
 	original.call(instance, value, el)
 	if (value.customData) {
-		if ("label" in value.customData && typeof value.customData.label === "string") {
-			el.setText(value.customData.label)
-		}
 		if ("color" in value.customData && typeof value.customData.color === "string") {
-			el.style.backgroundColor = value.customData.color
+			el.addClass('custom-color');
+			el.setCssProps({'--custom-color': value.customData.color});
 		}
 	}
+}
+
+function selectSuggestionPatch(instance: ObsidianPropertySuggester<SuggestionResult>, original: (value: SuggestionResult, evt: (MouseEvent | KeyboardEvent)) => void, value: SuggestionResult, evt: MouseEvent | KeyboardEvent) {
+	if (value.customData) {
+		if ("actualValue" in value.customData && typeof value.customData.actualValue === "string") {
+			let actualValue = {...value};
+			actualValue.text = value.customData.actualValue;
+			return original.call(instance, actualValue, evt)
+		}
+	}
+	return original.call(instance, value, evt)
 }
 
 function isPropertySuggester<T>(instance: Partial<ObsidianPropertySuggester<T>>): instance is ObsidianPropertySuggester<T> {

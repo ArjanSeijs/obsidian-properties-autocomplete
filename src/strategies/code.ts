@@ -1,6 +1,6 @@
 import AutoPropPlugin from "../main";
 import {evalAndValidate, validateResult} from "../util/code";
-import type {SuggesterResult} from "./index";
+import type {StrategySuggestionResult} from "./index";
 
 /**
  * Matches string or file in list returned by dynamic code
@@ -15,6 +15,6 @@ export async function evaluate(plugin: AutoPropPlugin, code: CodeStrategy) {
 	return results ?? []
 }
 
-export function match(_plugin: AutoPropPlugin, _suggestion : SuggesterResult, _code: CodeStrategy) : boolean {
-	throw new Error("Not yet implemented");
+export function match(_plugin: AutoPropPlugin, _suggestion : StrategySuggestionResult, _code: CodeStrategy) : boolean {
+	throw new Error("Code strategy not supported for filtering");
 }

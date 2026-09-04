@@ -2,7 +2,7 @@ import AutoPropPlugin from "../main";
 import {TFile} from "obsidian";
 import {getMarkdownFilesWithTag, getTags} from "../util/fileutil";
 
-import {SuggesterResult} from "./index";
+import {StrategySuggestionResult} from "./index";
 
 /**
  * Match files with tag
@@ -19,7 +19,7 @@ export function evaluate(plugin: AutoPropPlugin, strategy: TagStrategy) {
 	return [...files]
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: SuggesterResult, strategy: TagStrategy): boolean {
+export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: TagStrategy): boolean {
 	return suggestion instanceof TFile &&
 		getTags(plugin.app, suggestion)
 			.some(value => value === strategy.tag || value.startsWith(strategy.tag + '/') && !strategy.exact)
