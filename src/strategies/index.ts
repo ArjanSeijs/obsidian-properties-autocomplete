@@ -94,11 +94,12 @@ function fuzzySearchSuggestions(app: App, suggestion: StrategySuggestionResult, 
 		let resultLabel = suggestion.label ? fuzzySearcher(suggestion.label) : null
 		let result = resultLabel ?? resultValue ;
 		if (!result) return null;
+		const text = suggestion.label ? suggestion.label : suggestion.value;
 		return {
 			type: 'text',
 			score: result.score,
 			matches: result.matches,
-			text: suggestion.label ?? suggestion.value,
+			text: text,
 			customData: {color: suggestion.color, actualValue: suggestion.label ? suggestion.value : undefined}
 		}
 	}

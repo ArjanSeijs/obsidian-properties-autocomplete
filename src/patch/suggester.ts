@@ -108,7 +108,7 @@ function renderSuggestionPatch(instance: ObsidianPropertySuggester<SuggestionRes
 
 function selectSuggestionPatch(instance: ObsidianPropertySuggester<SuggestionResult>, original: (value: SuggestionResult, evt: (MouseEvent | KeyboardEvent)) => void, value: SuggestionResult, evt: MouseEvent | KeyboardEvent) {
 	if (value.customData) {
-		if ("actualValue" in value.customData && typeof value.customData.actualValue === "string") {
+		if ("actualValue" in value.customData && typeof value.customData.actualValue === "string" && value.customData.actualValue !== "") {
 			let actualValue = {...value};
 			actualValue.text = value.customData.actualValue;
 			return original.call(instance, actualValue, evt)
