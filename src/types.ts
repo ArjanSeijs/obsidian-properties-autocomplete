@@ -1,6 +1,12 @@
 import type {App, HistoryHandler, ISuggestOwner, Scope} from "obsidian";
 
-export type SuggestionResult = { type: string, text: string, score: number, matches: number[][] };
+export type SuggestionResult<T extends object = object> = {
+	type: string,
+	text: string,
+	score: number,
+	matches: number[][],
+	customData?: T
+};
 export type uninstaller = () => void
 export type Context = { key: string, hoverSource: string, sourcePath: string };
 

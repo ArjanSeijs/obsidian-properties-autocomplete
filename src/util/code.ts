@@ -62,9 +62,7 @@ export function validateResult(value: unknown): value is SuggesterResult {
 	if (typeof value === 'string') return true;
 	if (value != null &&
 		typeof value === "object" &&
-		"label" in value &&
 		"value" in value &&
-		typeof value.label === "string" &&
 		typeof value.value === "string") return true;
 	return value instanceof TFile;
 }

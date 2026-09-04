@@ -19,7 +19,6 @@ export default class AutoPropPlugin extends Plugin {
 		this.register(patchSuggester(this))
 		this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.applyIcons()));
 		this.registerEvent(this.app.workspace.on("file-open", () => this.applyIcons()));
-		this.registerEvent(this.app.metadataCache.on("changed", () => this.applyIcons()));
 	}
 
 	async loadSettings() {
@@ -28,6 +27,17 @@ export default class AutoPropPlugin extends Plugin {
 			DEFAULT_SETTINGS,
 			(await this.loadData()) as Partial<AutoPropSettings>,
 		);
+	}
+
+	async onExternalSettingsChange() {
+		let current = this.settings;
+		let changed = await this.loadData() as AutoPropSettings;
+		this.settings.allowJs = changed.allowJs;
+		this.settings.properties = Object.assign({}, current.properties, changed.properties);
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
 	}
 
 	applyIcons() {
@@ -42,17 +52,6 @@ export default class AutoPropPlugin extends Plugin {
 		const iconEl = propEl.querySelector<HTMLElement>(".metadata-property-icon");
 		const icon = this.settings.properties[key].icon;
 		if (icon && iconEl) setIcon(iconEl, icon)
-	}
-
-	async onExternalSettingsChange() {
-		let current = this.settings;
-		let changed = await this.loadData() as AutoPropSettings;
-		this.settings.allowJs = changed.allowJs;
-		this.settings.properties = Object.assign({}, current.properties, changed.properties);
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
 	}
 
 }

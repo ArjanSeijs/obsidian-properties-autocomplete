@@ -8,7 +8,7 @@ import type {DisjunctionStrategy} from "./disjunction";
 import * as Disjunction from "./disjunction";
 import type {FolderStrategy} from "./folder";
 import * as Folder from "./folder";
-import type {ListStrategy} from "./list";
+import type {ListItem, ListStrategy} from "./list";
 import * as List from "./list";
 import type {NegationStrategy} from "./negation";
 import * as Negation from "./negation";
@@ -27,7 +27,7 @@ export type AutoPropStrategy =
 	| ConjunctionStrategy
 	| NegationStrategy
 export type StrategyType = AutoPropStrategy['type']
-export type SuggesterResult = TFile | string | { label?: string, value: string };
+export type SuggesterResult = TFile | string | ListItem;
 export type SuggesterResults = SuggesterResult[]
 
 export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: AutoPropStrategy, context: Context): Promise<SuggesterResults> {
@@ -90,9 +90,18 @@ function fuzzySearchSuggestions(app: App, suggestion: SuggesterResult, fuzzySear
 		if (!result) return null;
 		return {type: 'text', score: result.score, matches: result.matches, text: wikilink}
 	} else {
-		let result = fuzzySearcher(suggestion.value);
+		let resultValue = fuzzySearcher(suggestion.value);
+		let resultLabel = suggestion.label ? fuzzySearcher(suggestion.label) : null
+		let result = resultValue ?? resultLabel;
 		if (!result) return null;
-		return {type: 'text', score: result.score, matches: result.matches, text: suggestion.value}
+		if (resultLabel && resultLabel.score > result.score) result = resultLabel;
+		return {
+			type: 'text',
+			score: result.score,
+			matches: result.matches,
+			text: suggestion.value,
+			customData: {label: suggestion.label, color: suggestion.color}
+		}
 	}
 }
 

@@ -4,11 +4,13 @@ import {AbstractInputSuggest} from "obsidian";
 import {queryStrategy} from "../strategies";
 import {ObsidianPropertySuggester, SuggestionResult, uninstaller} from "../types";
 
+const MONKEY_KEY = "eternal.prop";
+
 export function patchSuggester(plugin: AutoPropPlugin) {
 	// Patch getValue of AbstractInputSuggest to intercept an instance of the Internal PropertySuggester.
 	let patch: uninstaller;
 	let uninstaller = around(AbstractInputSuggest.prototype, {
-		getValue(old: () => string) {
+		getValue(original) {
 			return function () {
 				// @ts-ignore -- This has type any but is a AbstractInputSuggest
 				// this is an instance of abstract input suggester and may be a ObsidianPropertySuggester
@@ -16,7 +18,7 @@ export function patchSuggester(plugin: AutoPropPlugin) {
 				if (isPropertySuggester(instance)) {
 					patch = patchGetSuggestions(plugin, instance);
 				}
-				return old.call(instance)
+				return original.call(instance)
 			}
 		}
 	});
@@ -29,26 +31,47 @@ export function patchSuggester(plugin: AutoPropPlugin) {
 function patchGetSuggestions(plugin: AutoPropPlugin, obj: ObsidianPropertySuggester<SuggestionResult>): () => void {
 	const prototypeOf = Object.getPrototypeOf(obj) as (ObsidianPropertySuggester<SuggestionResult>);
 	return around(prototypeOf, {
-		getSuggestions(old: (query: string) => SuggestionResult[] | Promise<SuggestionResult[]>) {
-			return dedupe("eternal.getSuggestions", old, async function (query: string) {
+		getSuggestions(original) {
+			return dedupe(MONKEY_KEY + '.getSuggestions', original, async function (query) {
 				// @ts-ignore -- Instance type
 				const instance = this as ObsidianPropertySuggester<SuggestionResult>;
 
 				if (isPropertySuggester(instance)) {
 					try {
-						return await getAdditionalSuggestions(old, instance, query, plugin);
+						return await getSuggestionsPatch(instance, original, query, plugin);
 					} catch (error) {
 						console.error(error);
 					}
 				}
-				return old.call(instance, query);
+				return original.call(instance, query);
+			})
+		},
+		renderSuggestion(original) {
+			return dedupe(MONKEY_KEY + '.renderSuggestion', original, function (value, el) {
+				// @ts-ignore -- Instance type
+				const instance = this as ObsidianPropertySuggester<SuggestionResult>;
+				if (isPropertySuggester(instance)) {
+					try {
+						return renderSuggestionPatch(instance, original, value, el);
+					} catch (error) {
+						console.error(error);
+					}
+				}
+				return original.call(instance, value, el);
 			})
 		}
 	})
 }
 
-async function getAdditionalSuggestions(old: (query: string) => (SuggestionResult[] | Promise<SuggestionResult[]>), instance: ObsidianPropertySuggester<SuggestionResult>, query: string, plugin: AutoPropPlugin) {
-	const results = await old.call(instance, query);
+/**
+ * Inject additional suggestions into results of getSuggetions().
+ * @param instance
+ * @param original
+ * @param query
+ * @param plugin
+ */
+async function getSuggestionsPatch(instance: ObsidianPropertySuggester<SuggestionResult>, original: (query: string) => (SuggestionResult[] | Promise<SuggestionResult[]>), query: string, plugin: AutoPropPlugin) {
+	const results = await original.call(instance, query);
 	const property = instance.context.key.toLowerCase();
 	const strategy = plugin.settings.properties[property]?.strategy;
 	if (strategy) {
@@ -57,6 +80,18 @@ async function getAdditionalSuggestions(old: (query: string) => (SuggestionResul
 		results.push(...additional);
 	}
 	return results;
+}
+
+function renderSuggestionPatch(instance: ObsidianPropertySuggester<SuggestionResult>, original: (value: SuggestionResult, el: HTMLElement) => void, value: SuggestionResult, el: HTMLElement) {
+	original.call(instance, value, el)
+	if (value.customData) {
+		if ("label" in value.customData && typeof value.customData.label === "string") {
+			el.setText(value.customData.label)
+		}
+		if ("color" in value.customData && typeof value.customData.color === "string") {
+			el.style.backgroundColor = value.customData.color
+		}
+	}
 }
 
 function isPropertySuggester<T>(instance: Partial<ObsidianPropertySuggester<T>>): instance is ObsidianPropertySuggester<T> {
