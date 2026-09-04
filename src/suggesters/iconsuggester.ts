@@ -1,4 +1,4 @@
-import {AbstractInputSuggest, getIconIds, prepareFuzzySearch} from "obsidian";
+import {AbstractInputSuggest, getIconIds, prepareFuzzySearch, setIcon} from "obsidian";
 
 export class IconSuggester extends AbstractInputSuggest<string> {
 
@@ -14,7 +14,12 @@ export class IconSuggester extends AbstractInputSuggest<string> {
 	}
 
 	renderSuggestion(icon: string, el: HTMLElement): void {
-		el.setText(icon);
+		const iconEl = el.createSpan();
+		const textEl = el.createSpan();
+		iconEl.addClass('icon-item')
+		textEl.addClass('icon-item')
+		setIcon(iconEl, icon)
+		textEl.setText(icon);
 	}
 
 }

@@ -23,3 +23,7 @@ If your plugin does not need CSS, delete this file.
 .strategy-nested.depth-2 {
 	background-color: var(--color-base-50);)
 }
+
+.icon-item {
+	padding: 5px;
+}

@@ -6,7 +6,7 @@ import {ObsidianPropertySuggester, SuggestionResult, uninstaller} from "../types
 
 export function patchSuggester(plugin: AutoPropPlugin) {
 	// Patch getValue of AbstractInputSuggest to intercept an instance of the Internal PropertySuggester.
-	let patches: uninstaller[] = []
+	let patch: uninstaller;
 	let uninstaller = around(AbstractInputSuggest.prototype, {
 		getValue(old: () => string) {
 			return function () {
@@ -14,14 +14,14 @@ export function patchSuggester(plugin: AutoPropPlugin) {
 				// this is an instance of abstract input suggester and may be a ObsidianPropertySuggester
 				const instance = this as (AbstractInputSuggest<string> & Partial<ObsidianPropertySuggester<SuggestionResult>>);
 				if (isPropertySuggester(instance)) {
-					patches.push(patchGetSuggestions(plugin, instance));
+					patch = patchGetSuggestions(plugin, instance);
 				}
 				return old.call(instance)
 			}
 		}
 	});
 	return () => {
-		patches.forEach(patch => patch())
+		if (patch) patch();
 		uninstaller();
 	}
 }
@@ -53,6 +53,7 @@ async function getAdditionalSuggestions(old: (query: string) => (SuggestionResul
 	const strategy = plugin.settings.properties[property]?.strategy;
 	if (strategy) {
 		let additional = await queryStrategy(plugin, strategy, query, instance.context);
+		additional = additional.filter(value => results.every(other => other.text !== value.text));
 		results.push(...additional);
 	}
 	return results;

@@ -401,14 +401,14 @@ export class PropertySettingsModal extends Modal {
 						this.icon = value ?? undefined;
 						if (button && this.icon) setIcon(button.valueEl, this.icon)
 					})
-
 				let suggester = new IconSuggester(this.app, text.inputEl)
 				suggester.onSelect(value => {
 					text.setValue(value);
 					this.icon = value ?? undefined;
 					if (button && this.icon) setIcon(button.valueEl, this.icon)
 					suggester.close();
-				}).open();
+					this.plugin.applyIcons()
+				})
 
 			})
 
