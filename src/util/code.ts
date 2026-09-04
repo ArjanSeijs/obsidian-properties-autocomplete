@@ -1,8 +1,5 @@
 import AutoPropPlugin from "../main";
-import {App, Notice, TFile} from "obsidian";
-
-
-import {StrategySuggestionResult} from "../strategies";
+import {App, Notice} from "obsidian";
 
 export type Validator<T> = (value: unknown) => value is T;
 
@@ -53,16 +50,3 @@ export async function evalAndValidate<T>(plugin: AutoPropPlugin, code: string, v
 	}
 }
 
-/**
- * Validator for `evaluateStrategyCode`
- * @see evalAndValidate
- * @param value
- */
-export function validateResult(value: unknown): value is StrategySuggestionResult {
-	if (typeof value === 'string') return true;
-	if (value != null &&
-		typeof value === "object" &&
-		"value" in value &&
-		typeof value.value === "string") return true;
-	return value instanceof TFile;
-}

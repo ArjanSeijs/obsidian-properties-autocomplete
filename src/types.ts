@@ -1,4 +1,4 @@
-import type {App, HistoryHandler, ISuggestOwner, Scope} from "obsidian";
+import type {App, HistoryHandler, ISuggestOwner, prepareFuzzySearch, Scope} from "obsidian";
 
 export type SuggestionResult<T extends object = object> = {
 	type: string,
@@ -80,3 +80,5 @@ export interface ObsidianPropertySuggester<T> extends ISuggestOwner<T>, HistoryH
 
 
 }
+
+export type FuzzySearcher = ReturnType<typeof prepareFuzzySearch>

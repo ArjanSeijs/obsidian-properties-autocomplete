@@ -9,7 +9,7 @@ import {
 import AutoPropPlugin from "./main";
 import {TagSuggester} from "./suggesters/tagsuggester";
 import {FolderSuggester} from "./suggesters/foldersuggester";
-import {evalAndValidate, validateResult} from "./util/code";
+import {evalAndValidate} from "./util/code";
 import {TagStrategy} from "./strategies/tag";
 import {FolderStrategy} from "./strategies/folder";
 import {ListStrategy} from "./strategies/list";
@@ -19,6 +19,7 @@ import {ConjunctionStrategy} from "./strategies/conjunction";
 import {NegationStrategy} from "./strategies/negation";
 import {SuggestionStrategy, SuggestionStrategyType} from "./strategies";
 import {IconSuggester} from "./suggesters/iconsuggester";
+import {isSuggestionResult} from "./strategies/suggestion";
 
 type PropertySetting = { strategy?: SuggestionStrategy, icon?: string };
 
@@ -306,7 +307,7 @@ export class PropertySettingsModal extends Modal {
 	private async validate(btn: ButtonComponent, strategy: CodeStrategy) {
 		btn.setIcon('circle-dashed')
 		btn.setDisabled(true);
-		let result = await evalAndValidate(this.plugin, strategy.code, (value) => validateResult(value))
+		let result = await evalAndValidate(this.plugin, strategy.code, (value) => isSuggestionResult(value))
 		if (result != null) {
 			new Notice('Code completed successfully.');
 		}
@@ -419,7 +420,7 @@ export class PropertySettingsModal extends Modal {
 					this.icon = value ?? undefined;
 					if (button && this.icon) setIcon(button.valueEl, this.icon)
 					suggester.close();
-					this.plugin.applyIcons()
+					this.plugin.applyLayoutChanges()
 					await this.plugin.saveSettings()
 				})
 

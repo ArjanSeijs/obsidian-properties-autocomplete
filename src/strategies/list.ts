@@ -1,6 +1,6 @@
 import AutoPropPlugin from "../main";
-import {StrategySuggestionResult, testSuggestionEquality} from "./index";
 import {HexString} from "obsidian";
+import {StrategySuggestionResult, eqSuggestionResult} from "./suggestion";
 
 export type ListItem = { label?: string, value: string, color?: HexString };
 
@@ -17,5 +17,5 @@ export function evaluate(_: AutoPropPlugin, listStrategy: ListStrategy) {
 }
 
 export function match(_: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: ListStrategy): boolean {
-	return strategy.options.some(value => testSuggestionEquality(value, suggestion))
+	return strategy.options.some(value => eqSuggestionResult(value, suggestion))
 }

@@ -1,8 +1,9 @@
 import AutoPropPlugin from "../main";
-import {SuggestionStrategy, matchStrategy, StrategySuggestionResult} from "./index";
+import {SuggestionStrategy, matchStrategy} from "./index";
 import {getMarkdownFilesWithTag, pathResolve} from "../util/fileutil";
 
 import {Context} from "../types";
+import {StrategySuggestionResult} from "./suggestion";
 
 /**
  * Negation
@@ -13,7 +14,7 @@ export interface NegationStrategy {
 }
 
 
-export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, context: Context) {
+export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, context?: Context) {
 
 	let subStrategy = strategy.strategy;
 	switch (subStrategy.type) {
@@ -22,7 +23,7 @@ export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, con
 		case "Tag":
 			return [...getMarkdownFilesWithTag(plugin.app, subStrategy.tag, subStrategy.exact, true)]
 		case "Folder": {
-			const folder = pathResolve(context.sourcePath, "..", subStrategy.folder);
+			const folder = context ? pathResolve(context.sourcePath, "..", subStrategy.folder) : pathResolve(subStrategy.folder);
 			return plugin.app.vault.getMarkdownFiles().filter(value => !value.path.includes(folder))
 		}
 		case "JS":
@@ -34,6 +35,6 @@ export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, con
 	}
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: NegationStrategy, context : Context): boolean {
+export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: NegationStrategy, context?: Context): boolean {
 	return !matchStrategy(plugin, suggestion, strategy.strategy, context);
 }

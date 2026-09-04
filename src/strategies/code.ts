@@ -1,6 +1,7 @@
 import AutoPropPlugin from "../main";
-import {evalAndValidate, validateResult} from "../util/code";
-import type {StrategySuggestionResult} from "./index";
+import {evalAndValidate} from "../util/code";
+
+import {StrategySuggestionResult, isSuggestionResult} from "./suggestion";
 
 /**
  * Matches string or file in list returned by dynamic code
@@ -11,7 +12,7 @@ export interface CodeStrategy {
 }
 
 export async function evaluate(plugin: AutoPropPlugin, code: CodeStrategy) {
-	const results = await evalAndValidate(plugin, code.code, validateResult);
+	const results = await evalAndValidate(plugin, code.code, isSuggestionResult);
 	return results ?? []
 }
 

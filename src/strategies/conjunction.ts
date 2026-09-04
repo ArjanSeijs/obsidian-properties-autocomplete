@@ -3,13 +3,12 @@ import {
 	SuggestionStrategy,
 	evaluateStrategy,
 	matchStrategies,
-	matchStrategy,
-	StrategySuggestionResult,
-	testSuggestionEquality
+	matchStrategy
 } from "./index";
 import {intersection, partition} from "../util/listutil";
 
 import {Context} from "../types";
+import {StrategySuggestionResult, eqSuggestionResult} from "./suggestion";
 
 /**
  * And / Intersection
@@ -19,15 +18,15 @@ export interface ConjunctionStrategy {
 	strategies: Exclude<SuggestionStrategy, ConjunctionStrategy>[]
 }
 
-export async function evaluate(plugin: AutoPropPlugin, strategy: ConjunctionStrategy, context: Context) {
+export async function evaluate(plugin: AutoPropPlugin, strategy: ConjunctionStrategy, context?: Context) {
 	const {left: providers, right: filters} = partition(strategy.strategies, isProvider)
 	const results = await Promise.all(providers.map(provider => evaluateStrategy(plugin, provider, context)))
 
-	const suggestions = intersection((a, b) => testSuggestionEquality(a, b), ...results);
+	const suggestions = intersection((a, b) => eqSuggestionResult(a, b), ...results);
 	return suggestions.filter(suggestions => matchStrategies(plugin, suggestions, filters, context))
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: ConjunctionStrategy, context: Context): boolean {
+export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: ConjunctionStrategy, context?: Context): boolean {
 	const strategies = strategy.strategies;
 	return strategies.every(strategy => matchStrategy(plugin, suggestion, strategy, context));
 }

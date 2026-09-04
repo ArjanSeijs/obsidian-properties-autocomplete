@@ -2,7 +2,8 @@ import AutoPropPlugin from "../main";
 import {TFile} from "obsidian";
 import {getMarkdownFilesWithTag, getTags} from "../util/fileutil";
 
-import {StrategySuggestionResult} from "./index";
+
+import {StrategySuggestionResult} from "./suggestion";
 
 /**
  * Match files with tag
