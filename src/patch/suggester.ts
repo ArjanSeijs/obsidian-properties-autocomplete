@@ -8,7 +8,7 @@ const MONKEY_KEY = "eternal.prop";
 
 export function patchSuggester(plugin: AutoPropPlugin) {
 	// Patch getValue of AbstractInputSuggest to intercept an instance of the Internal PropertySuggester.
-	let patch: uninstaller;
+	let patch: uninstaller[] = [];
 	let uninstaller = around(AbstractInputSuggest.prototype, {
 		getValue(original) {
 			return function () {
@@ -16,14 +16,14 @@ export function patchSuggester(plugin: AutoPropPlugin) {
 				// this is an instance of abstract input suggester and may be a ObsidianPropertySuggester
 				const instance = this as (AbstractInputSuggest<string> & Partial<ObsidianPropertySuggester<SuggestionResult>>);
 				if (isPropertySuggester(instance)) {
-					patch = patchGetSuggestions(plugin, instance);
+					patch.push(patchGetSuggestions(plugin, instance));
 				}
 				return original.call(instance)
 			}
 		}
 	});
 	return () => {
-		if (patch) patch();
+		if (patch) patch.forEach(p => p());
 		uninstaller();
 	}
 }
@@ -91,6 +91,15 @@ async function getSuggestionsPatch(instance: ObsidianPropertySuggester<Suggestio
 	const strategy = plugin.settings.properties[property]?.strategy;
 	if (strategy) {
 		let additional = await queryStrategy(plugin, strategy, query, instance.context);
+		// Filter out duplicates but do copy customData
+		additional = additional.filter(value => {
+			let duplicate = results.find(other => other.text === value.text)
+			if (duplicate) {
+				duplicate.customData = value.customData;
+				return false;
+			}
+			return true
+		})
 		results.push(...additional);
 	}
 	return results;

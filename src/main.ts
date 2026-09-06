@@ -7,11 +7,13 @@ import {
 } from './settings';
 import {patchPropertyMenu} from "./patch/propertymenu";
 import {patchSuggester} from "./patch/suggester";
-import {evaluateStrategy} from "./strategies";
+import {StrategyCache} from "./types";
+import {evaluateStrategy, SuggestionStrategy} from "./strategies";
 
 
 export default class AutoPropPlugin extends Plugin {
 	settings!: AutoPropSettings;
+	strategyCache: StrategyCache = {};
 
 	async onload() {
 		await this.loadSettings();
@@ -20,6 +22,11 @@ export default class AutoPropPlugin extends Plugin {
 		this.register(patchSuggester(this))
 		this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.applyLayoutChanges()));
 		this.registerEvent(this.app.workspace.on("file-open", () => this.applyLayoutChanges()));
+		this.registerEvent(this.app.metadataCache.on("changed", () => this.applyLayoutChanges()));
+		// Lazy loading inital cache.
+		Object.entries(this.settings.properties).forEach(([key, value]) => {
+			if (value.strategy) void this.strategyCacheSet(key, value.strategy)
+		});
 	}
 
 	async loadSettings() {
@@ -41,8 +48,13 @@ export default class AutoPropPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
+	async strategyCacheSet(key: string, strategy: SuggestionStrategy) {
+		this.strategyCache[key] = await evaluateStrategy(this, strategy)
+	}
+
 	applyLayoutChanges() {
-		document.querySelectorAll<HTMLElement>(".metadata-property").forEach(value => this.applyLayout(value))
+		document.querySelectorAll<HTMLElement>(".metadata-property").forEach(value => this.applyIcon(value))
+		document.querySelectorAll<HTMLElement>(".metadata-property").forEach(value => this.applyBackgrounds(value))
 	}
 
 	applyLayout(propEl: HTMLElement) {
@@ -62,19 +74,23 @@ export default class AutoPropPlugin extends Plugin {
 	}
 
 	applyBackground(valueEl: HTMLElement, key: string) {
-		if (!this.settings.properties[key]) return
-		let strategy = this.settings.properties[key].strategy
+		if (!this.strategyCache[key]) return
+		let strategy = this.strategyCache[key];
 		if (!strategy) return;
-		void evaluateStrategy(this, strategy).then(value => {
-			for (const result of value) {
-				if (typeof result === "string") continue;
-				if (result instanceof TFile) continue
-				if (valueEl.innerText === result.value && result.color) {
+		for (const result of strategy) {
+			if (typeof result === "string" || result instanceof TFile) {
+				valueEl.removeClass('custom-color')
+				valueEl.setCssProps({'--custom-color': ''});
+			} else if (valueEl.innerText === result.value) {
+				if (result.color) {
 					valueEl.addClass('custom-color');
 					valueEl.setCssProps({'--custom-color': result.color});
+				} else {
+					valueEl.removeClass('custom-color')
+					valueEl.setCssProps({'--custom-color': ''});
 				}
 			}
-		});
+		}
 	}
 
 

@@ -1,4 +1,5 @@
 import type {App, HistoryHandler, ISuggestOwner, prepareFuzzySearch, Scope} from "obsidian";
+import {StrategySuggestionResults} from "./strategies/suggestion";
 
 export type SuggestionResult<T extends object = object> = {
 	type: string,
@@ -9,6 +10,8 @@ export type SuggestionResult<T extends object = object> = {
 };
 export type uninstaller = () => void
 export type Context = { key: string, hoverSource: string, sourcePath: string };
+
+export type StrategyCache = {[key : string] : StrategySuggestionResults}
 
 /**
  * PopoverSuggester + AbstractInputSuggester + internal api for property suggester.

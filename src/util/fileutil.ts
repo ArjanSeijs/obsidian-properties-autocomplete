@@ -12,7 +12,7 @@ export function getTags(app: App, file: TFile) {
  * @param app
  * @param tag The tag including '#'
  * @param subtags Whether it should match subtags. E.g. #example will also match #example/foo
- * @param invert Get the files withouth tag
+ * @param invert Get the files without tag
  */
 export function* getMarkdownFilesWithTag(app: App, tag: string, subtags = true, invert = false) {
 	for (const file of app.vault.getMarkdownFiles()) {

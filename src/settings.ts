@@ -63,7 +63,7 @@ type RenderStrategyArgs = {
 }
 
 export class PropertySettingsModal extends Modal {
-	constructor(private plugin: AutoPropPlugin, private property: string) {
+	constructor(private plugin: AutoPropPlugin, private property: string, private propertyEl: HTMLElement) {
 		super(plugin.app);
 		this.setTitle("Property settings for " + this.property);
 		this.render();
@@ -425,6 +425,18 @@ export class PropertySettingsModal extends Modal {
 				})
 
 			})
+
+	}
+
+	onClose() {
+		super.onClose();
+		if(this.strategy) {
+			void this.plugin.strategyCacheSet(this.property, this.strategy)
+				.then(() => this.plugin.applyLayout(this.propertyEl))
+		} else {
+			this.plugin.applyLayout(this.propertyEl);
+		}
+
 
 	}
 }
