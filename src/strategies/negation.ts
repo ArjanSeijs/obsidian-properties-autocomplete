@@ -2,7 +2,7 @@ import AutoPropPlugin from "../main";
 import {SuggestionStrategy, matchStrategy} from "./index";
 import {getMarkdownFilesWithTag, pathResolve} from "../util/fileutil";
 
-import {Context} from "../types";
+import {SuggesterContext} from "../types";
 import {StrategySuggestionResult} from "./suggestion";
 
 /**
@@ -14,7 +14,7 @@ export interface NegationStrategy {
 }
 
 
-export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, context?: Context) {
+export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, context?: SuggesterContext) {
 
 	let subStrategy = strategy.strategy;
 	switch (subStrategy.type) {
@@ -35,6 +35,6 @@ export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, con
 	}
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: NegationStrategy, context?: Context): boolean {
+export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: NegationStrategy, context?: SuggesterContext): boolean {
 	return !matchStrategy(plugin, suggestion, strategy.strategy, context);
 }

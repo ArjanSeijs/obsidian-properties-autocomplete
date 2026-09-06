@@ -1,7 +1,14 @@
 import AutoPropPlugin from "../main";
-import {App, Notice} from "obsidian";
+import {App, CachedMetadata, Notice, TFile} from "obsidian";
+import {getFrontmatter} from "./fileutil";
 
 export type Validator<T> = (value: unknown) => value is T;
+
+export type ExecContext = {
+	file: TFile | null
+	frontmatter: object | null
+	metadata : CachedMetadata | null
+}
 
 /**
  * Throw error after ms
@@ -18,17 +25,22 @@ export function timeout(ms: number): Promise<never> {
  * @param code
  * @param validator Function output validator
  * @param ms Timeout in ms
+ * @param sourcePath
  */
-export async function evalAndValidate<T>(plugin: AutoPropPlugin, code: string, validator: Validator<T>, ms = 5000): Promise<T[] | null> {
+export async function evalAndValidate<T>(plugin: AutoPropPlugin, code: string, validator: Validator<T>, sourcePath?: string, ms = plugin.settings.jsTimeout): Promise<T[] | null> {
 	if (!plugin.settings.allowJs) {
 		new Notice('Enable JavaScript support in settings.');
 		return null;
 	}
 	try {
+		let file = sourcePath ? plugin.app.vault.getFileByPath(sourcePath) : null;
+		let frontmatter = file ? getFrontmatter(plugin.app, file) : null;
+		let metadata = file ? plugin.app.metadataCache.getFileCache(file) : null;
+		let ectx = {file, frontmatter, metadata};
 		// eslint-disable-next-line eslint-comments/no-restricted-disable -- See below
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval,obsidianmd/rule-custom-message -- Users own risk, only executed if enabled in settings.
-		let func = new Function(code) as (app: App) => Promise<unknown>;
-		let result = await Promise.race([func(plugin.app), timeout(ms)]);
+		let func = new Function("app", "ectx", code) as (app: App, ectx: ExecContext) => Promise<unknown>;
+		let result = await Promise.race([func(plugin.app, ectx), timeout(ms)]);
 
 		if (!Array.isArray(result)) {
 			new Notice("Result is not an array but was: " + typeof result);

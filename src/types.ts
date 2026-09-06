@@ -9,7 +9,7 @@ export type SuggestionResult<T extends object = object> = {
 	customData?: T
 };
 export type uninstaller = () => void
-export type Context = { key: string, hoverSource: string, sourcePath: string };
+export type SuggesterContext = { key: string, hoverSource: string, sourcePath: string };
 
 export type StrategyCache = {[key : string] : StrategySuggestionResults}
 
@@ -21,7 +21,7 @@ export interface ObsidianPropertySuggester<T> extends ISuggestOwner<T>, HistoryH
 	/* == Internal API == */
 	suggestEl: HTMLElement
 
-	context: Context
+	context: SuggesterContext
 
 	/* == PopOver + AbstractInput == */
 

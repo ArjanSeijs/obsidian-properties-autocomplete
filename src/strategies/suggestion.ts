@@ -1,6 +1,6 @@
 import {App, TFile} from "obsidian";
 import type {ListItem} from "./list";
-import {Context} from "../types";
+import {SuggesterContext} from "../types";
 
 export type StrategySuggestionResult = TFile | string | ListItem;
 export type StrategySuggestionResults = StrategySuggestionResult[]
@@ -33,7 +33,7 @@ export function isSuggestionResult(value: unknown): value is StrategySuggestionR
 	return value instanceof TFile;
 }
 
-export function suggestionToString(app: App, suggestion: StrategySuggestionResult, context?: Context) {
+export function suggestionToString(app: App, suggestion: StrategySuggestionResult, context?: SuggesterContext) {
 	if (typeof suggestion === "string") {
 		return suggestion;
 	} else if (suggestion instanceof TFile) {

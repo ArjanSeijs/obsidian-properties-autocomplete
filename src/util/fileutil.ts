@@ -39,7 +39,7 @@ export function getFilesInFolder(app: App, folder: string, includeSubFolders = t
  * @param app
  * @param file
  */
-export function getFrontmatter<T>(app: App, file: TFile) {
+export function getFrontmatter<T extends object>(app: App, file: TFile) {
 	let cache = app.metadataCache.getFileCache(file)
 	if (!cache) return {} as T
 	if (!cache.frontmatter) return {} as T

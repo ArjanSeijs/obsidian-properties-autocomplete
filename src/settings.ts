@@ -26,6 +26,7 @@ type PropertySetting = { strategy?: SuggestionStrategy, icon?: string };
 export interface AutoPropSettings {
 	properties: { [key: string]: PropertySetting };
 	allowJs: boolean;
+	jsTimeout: number;
 	// In case of migrating configs to newer version.
 	version: string
 }
@@ -34,6 +35,7 @@ export const DEFAULT_SETTINGS: AutoPropSettings = {
 	version: "1.0.0",
 	properties: {},
 	allowJs: false,
+	jsTimeout: 5000
 };
 
 
@@ -49,6 +51,11 @@ export class PropertySettingsTab extends PluginSettingTab {
 				name: 'Allow Javascript',
 				desc: 'Enable execution of custom user scripts for suggestions',
 				control: {type: 'toggle', key: 'allowJs'}
+			},
+			{
+				name: 'Javascript timeout',
+				desc: 'Time before custom user script timeouts in ms.',
+				control: {type: 'number', key: 'jsTimeout'}
 			}
 		];
 	}

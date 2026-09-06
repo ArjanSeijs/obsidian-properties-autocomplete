@@ -16,7 +16,7 @@ import type {TagStrategy} from "./tag";
 import * as Tag from "./tag";
 import {App, prepareFuzzySearch, TFile} from "obsidian";
 
-import {Context, FuzzySearcher, SuggestionResult} from "../types";
+import {SuggesterContext, FuzzySearcher, SuggestionResult} from "../types";
 import {StrategySuggestionResult, StrategySuggestionResults, suggestionToString} from "./suggestion";
 
 export type SuggestionStrategy =
@@ -29,7 +29,7 @@ export type SuggestionStrategy =
 	| NegationStrategy
 export type SuggestionStrategyType = SuggestionStrategy['type']
 
-export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: SuggestionStrategy, context?: Context): Promise<StrategySuggestionResults> {
+export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: SuggestionStrategy, context?: SuggesterContext): Promise<StrategySuggestionResults> {
 	switch (strategy.type) {
 		case "List":
 			return List.evaluate(plugin, strategy)
@@ -38,7 +38,7 @@ export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: Suggest
 		case "Folder":
 			return Folder.evaluate(plugin, strategy, context)
 		case "JS":
-			return Code.evaluate(plugin, strategy)
+			return Code.evaluate(plugin, strategy, context)
 		case "Disjunction":
 			return Disjunction.evaluate(plugin, strategy, context)
 		case "Conjunction":
@@ -49,11 +49,11 @@ export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: Suggest
 	}
 }
 
-export function matchStrategies(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategies: SuggestionStrategy[], context?: Context) {
+export function matchStrategies(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategies: SuggestionStrategy[], context?: SuggesterContext) {
 	return strategies.every(strategy => matchStrategy(plugin, suggestion, strategy, context))
 }
 
-export function matchStrategy(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: SuggestionStrategy, context?: Context): boolean {
+export function matchStrategy(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: SuggestionStrategy, context?: SuggesterContext): boolean {
 	switch (strategy.type) {
 		case "List":
 			return List.match(plugin, suggestion, strategy)
@@ -72,13 +72,13 @@ export function matchStrategy(plugin: AutoPropPlugin, suggestion: StrategySugges
 	}
 }
 
-export async function queryStrategy(plugin: AutoPropPlugin, strategy: SuggestionStrategy, query: string, context: Context) {
+export async function queryStrategy(plugin: AutoPropPlugin, strategy: SuggestionStrategy, query: string, context: SuggesterContext) {
 	let results = await evaluateStrategy(plugin, strategy, context);
 	return results.map(suggestion => fuzzySearchSuggestions(plugin.app, suggestion, prepareFuzzySearch(query), context)).filter(value => value != null)
 }
 
 
-function fuzzySearchSuggestions(app: App, suggestion: StrategySuggestionResult, fuzzySearcher: FuzzySearcher, context: Context): SuggestionResult | null {
+function fuzzySearchSuggestions(app: App, suggestion: StrategySuggestionResult, fuzzySearcher: FuzzySearcher, context: SuggesterContext): SuggestionResult | null {
 	if (typeof suggestion === "string" || suggestion instanceof TFile) {
 		let text = suggestionToString(app, suggestion, context);
 		let result = fuzzySearcher(text);

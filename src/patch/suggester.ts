@@ -23,7 +23,7 @@ export function patchSuggester(plugin: AutoPropPlugin) {
 		}
 	});
 	return () => {
-		if (patch) patch.forEach(p => p());
+		patch.forEach(p => p());
 		uninstaller();
 	}
 }
