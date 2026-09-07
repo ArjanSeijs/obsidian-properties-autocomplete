@@ -16,6 +16,11 @@ export async function evaluate(plugin: AutoPropPlugin, disjunctionStrategy: Disj
 	return results.flat().unique()
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: DisjunctionStrategy, context?: SuggesterContext): boolean {
-	return strategy.strategies.some(strategy => matchStrategy(plugin, suggestion, strategy, context));
+export async function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: DisjunctionStrategy, context?: SuggesterContext): Promise<boolean> {
+	for (const subStrategy of strategy.strategies) {
+		if (await matchStrategy(plugin, suggestion, subStrategy, context)) {
+			return true
+		}
+	}
+	return false;
 }

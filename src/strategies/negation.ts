@@ -35,6 +35,6 @@ export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, con
 	}
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: NegationStrategy, context?: SuggesterContext): boolean {
-	return !matchStrategy(plugin, suggestion, strategy.strategy, context);
+export async function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: NegationStrategy, context?: SuggesterContext): Promise<boolean> {
+	return !await matchStrategy(plugin, suggestion, strategy.strategy, context);
 }

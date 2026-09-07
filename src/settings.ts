@@ -29,13 +29,17 @@ export interface AutoPropSettings {
 	jsTimeout: number;
 	// In case of migrating configs to newer version.
 	version: string
+	enableIcons : boolean
+	enableBackgrounds: boolean
 }
 
 export const DEFAULT_SETTINGS: AutoPropSettings = {
 	version: "1.0.0",
 	properties: {},
 	allowJs: false,
-	jsTimeout: 5000
+	jsTimeout: 5000,
+	enableIcons : true,
+	enableBackgrounds: true,
 };
 
 
@@ -56,6 +60,16 @@ export class PropertySettingsTab extends PluginSettingTab {
 				name: 'Javascript timeout',
 				desc: 'Time before custom user script timeouts in ms.',
 				control: {type: 'number', key: 'jsTimeout'}
+			},
+			{
+				name: 'Enable Icons',
+				desc: 'Custom property icons.',
+				control: {type: 'toggle', key: 'enableIcons'}
+			},
+			{
+				name: 'Enable Backgrounds',
+				desc: 'Custom property backgrounds.',
+				control: {type: 'toggle', key: 'enableBackgrounds'}
 			}
 		];
 	}

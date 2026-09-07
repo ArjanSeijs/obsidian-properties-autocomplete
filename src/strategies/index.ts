@@ -49,11 +49,16 @@ export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: Suggest
 	}
 }
 
-export function matchStrategies(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategies: SuggestionStrategy[], context?: SuggesterContext) {
-	return strategies.every(strategy => matchStrategy(plugin, suggestion, strategy, context))
+export async function matchStrategies(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategies: SuggestionStrategy[], context?: SuggesterContext) {
+	for (const strategy of strategies) {
+		if (!await matchStrategy(plugin, suggestion, strategy, context)) {
+			return false;
+		}
+	}
+	return true;
 }
 
-export function matchStrategy(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: SuggestionStrategy, context?: SuggesterContext): boolean {
+export async function matchStrategy(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: SuggestionStrategy, context?: SuggesterContext): Promise<boolean> {
 	switch (strategy.type) {
 		case "List":
 			return List.match(plugin, suggestion, strategy)
@@ -62,13 +67,13 @@ export function matchStrategy(plugin: AutoPropPlugin, suggestion: StrategySugges
 		case "Folder":
 			return Folder.match(plugin, suggestion, strategy, context)
 		case "JS":
-			return Code.match(plugin, suggestion, strategy)
+			return await Code.match(plugin, suggestion, strategy, context)
 		case "Disjunction":
-			return Disjunction.match(plugin, suggestion, strategy, context)
+			return await Disjunction.match(plugin, suggestion, strategy, context)
 		case "Conjunction":
-			return Conjunction.match(plugin, suggestion, strategy, context);
+			return await Conjunction.match(plugin, suggestion, strategy, context);
 		case "Negation":
-			return Negation.match(plugin, suggestion, strategy, context);
+			return await Negation.match(plugin, suggestion, strategy, context);
 	}
 }
 

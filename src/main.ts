@@ -41,6 +41,9 @@ export default class AutoPropPlugin extends Plugin {
 		let current = this.settings;
 		let changed = await this.loadData() as AutoPropSettings;
 		this.settings.allowJs = changed.allowJs;
+		this.settings.enableIcons = changed.enableIcons
+		this.settings.enableBackgrounds = changed.enableBackgrounds;
+		this.settings.jsTimeout = changed.jsTimeout;
 		this.settings.properties = Object.assign({}, current.properties, changed.properties);
 	}
 
@@ -53,16 +56,21 @@ export default class AutoPropPlugin extends Plugin {
 	}
 
 	applyLayoutChanges() {
-		document.querySelectorAll<HTMLElement>(".metadata-property").forEach(value => this.applyIcon(value))
-		document.querySelectorAll<HTMLElement>(".metadata-property").forEach(value => this.applyBackgrounds(value))
+		if (this.settings.enableIcons) {
+			document.querySelectorAll<HTMLElement>(".metadata-property").forEach(value => this.applyIcon(value))
+		}
+		if (this.settings.enableBackgrounds) {
+			document.querySelectorAll<HTMLElement>(".metadata-property").forEach(value => this.applyBackgrounds(value))
+		}
 	}
 
 	applyLayout(propEl: HTMLElement) {
-		this.applyIcon(propEl);
-		this.applyBackgrounds(propEl)
+		if (this.settings.enableIcons) this.applyIcon(propEl);
+		if (this.settings.enableBackgrounds) this.applyBackgrounds(propEl)
 	}
 
 	applyBackgrounds(propEl: HTMLElement) {
+		if (!this.settings.enableBackgrounds) return;
 		const key = propEl.getAttribute("data-property-key");
 		if (!key) return;
 
@@ -74,6 +82,7 @@ export default class AutoPropPlugin extends Plugin {
 	}
 
 	applyBackground(valueEl: HTMLElement, key: string) {
+		if (!this.settings.enableBackgrounds) return;
 		if (!this.strategyCache[key]) return
 		let strategy = this.strategyCache[key];
 		if (!strategy) return;
@@ -95,6 +104,7 @@ export default class AutoPropPlugin extends Plugin {
 
 
 	applyIcon(propEl: HTMLElement) {
+		if (!this.settings.enableIcons) return;
 		const key = propEl.getAttribute("data-property-key");
 		if (!key || !this.settings.properties[key]) return;
 

@@ -1,7 +1,7 @@
 import AutoPropPlugin from "../main";
 import {evalAndValidate} from "../util/code";
 
-import {StrategySuggestionResult, isSuggestionResult} from "./suggestion";
+import {StrategySuggestionResult, isSuggestionResult, eqSuggestionResult} from "./suggestion";
 import {SuggesterContext} from "../types";
 
 /**
@@ -17,6 +17,7 @@ export async function evaluate(plugin: AutoPropPlugin, code: CodeStrategy, conte
 	return results ?? []
 }
 
-export function match(_plugin: AutoPropPlugin, _suggestion: StrategySuggestionResult, _code: CodeStrategy): boolean {
-	throw new Error("Code strategy not supported for filtering");
+export async function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, code: CodeStrategy, context? : SuggesterContext): Promise<boolean> {
+	const results = await evalAndValidate(plugin, code.code, isSuggestionResult, context?.sourcePath);
+	return results?.some(other => eqSuggestionResult(suggestion, other)) ?? false;
 }

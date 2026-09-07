@@ -7,6 +7,14 @@ export function intersection<T>(test: (a: T, b: T) => boolean, ...arrays: T[][])
 	return arrays.reduce((acc, curr) => intersection2(test, acc, curr));
 }
 
+export async function asyncFilter<T>(predicate: (value: T) => Promise<boolean>, array: T[]): Promise<T[]> {
+	let results: T[] = [];
+	for (const item of array) {
+		if (await predicate(item)) results.push(item);
+	}
+	return results;
+}
+
 /**
  * Left matches predicate right does not match predicate
  * @param array

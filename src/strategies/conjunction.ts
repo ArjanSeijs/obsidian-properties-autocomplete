@@ -5,7 +5,7 @@ import {
 	matchStrategies,
 	matchStrategy
 } from "./index";
-import {intersection, partition} from "../util/listutil";
+import {asyncFilter, intersection, partition} from "../util/listutil";
 
 import {SuggesterContext} from "../types";
 import {StrategySuggestionResult, eqSuggestionResult} from "./suggestion";
@@ -23,12 +23,18 @@ export async function evaluate(plugin: AutoPropPlugin, strategy: ConjunctionStra
 	const results = await Promise.all(providers.map(provider => evaluateStrategy(plugin, provider, context)))
 
 	const suggestions = intersection((a, b) => eqSuggestionResult(a, b), ...results);
-	return suggestions.filter(suggestions => matchStrategies(plugin, suggestions, filters, context))
+	return asyncFilter(suggestions => matchStrategies(plugin, suggestions, filters, context), suggestions)
+	// suggestions.filter(suggestions => matchStrategies(plugin, suggestions, filters, context))
 }
 
-export function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: ConjunctionStrategy, context?: SuggesterContext): boolean {
+export async function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: ConjunctionStrategy, context?: SuggesterContext): Promise<boolean> {
 	const strategies = strategy.strategies;
-	return strategies.every(strategy => matchStrategy(plugin, suggestion, strategy, context));
+	for (const subStrategy of strategies) {
+		if (!await matchStrategy(plugin, suggestion, subStrategy, context)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 function isProvider(value: SuggestionStrategy): boolean {
