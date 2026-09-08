@@ -91,7 +91,7 @@ export class PropertySettingsTab extends PluginSettingTab {
 						control: {type: 'toggle', key: 'enableBackgrounds',}
 					},
 					{
-						name: 'Enable Backgrounds',
+						name: 'Enable Property Validation',
 						desc: 'Property verification.',
 						control: {type: 'toggle', key: 'enableValidation',}
 					}

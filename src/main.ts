@@ -9,6 +9,7 @@ import {patchPropertyMenu} from "./patch/propertymenu";
 import {patchSuggester} from "./patch/suggester";
 import {StrategyCache} from "./types";
 import {evaluateStrategy, SuggestionStrategy} from "./strategies";
+import {validateSuggestionResult} from "./strategies/suggestion";
 
 
 export default class AutoPropPlugin extends Plugin {
@@ -62,11 +63,15 @@ export default class AutoPropPlugin extends Plugin {
 		if (this.settings.enableBackgrounds) {
 			document.querySelectorAll<HTMLElement>(".metadata-property").forEach(value => this.applyBackgrounds(value))
 		}
+		if (this.settings.enableValidation) {
+			document.querySelectorAll<HTMLElement>(".metadata-property").forEach(value => this.validateValues(value))
+		}
 	}
 
 	applyLayout(propEl: HTMLElement) {
 		if (this.settings.enableIcons) this.applyIcon(propEl);
 		if (this.settings.enableBackgrounds) this.applyBackgrounds(propEl)
+		if (this.settings.enableValidation) this.validateValues(propEl)
 	}
 
 	applyBackgrounds(propEl: HTMLElement) {
@@ -113,4 +118,30 @@ export default class AutoPropPlugin extends Plugin {
 		if (icon && iconEl) setIcon(iconEl, icon)
 	}
 
+	validateValues(propEl: HTMLElement) {
+		if (!this.settings.enableValidation) return;
+		const key = propEl.getAttribute("data-property-key");
+		if (!key) return;
+
+
+		let longText = propEl.querySelectorAll<HTMLElement>('.metadata-property-value')
+		let selectPill = propEl.querySelectorAll<HTMLElement>('.multi-select-pill');
+		longText.forEach(value => this.validateValue(value, key))
+		selectPill.forEach(value => this.validateValue(value, key))
+
+	}
+
+	validateValue(valueEl: HTMLElement, key: string) {
+		if (!this.settings.enableBackgrounds) return;
+		if (!this.strategyCache[key]) return
+		if (!this.settings.properties[key]?.validate) return
+		let strategy = this.strategyCache[key];
+		if (!strategy) return;
+		const option =
+			valueEl.querySelector<HTMLElement>('.multi-select-pill-content')?.innerText
+			?? valueEl.querySelector<HTMLElement>('.metadata-input-longtext')?.innerText
+		if (!strategy.some(suggestion => validateSuggestionResult(this.app, option!, suggestion))) {
+			valueEl.addClass('invalid-suggestion');
+		}
+	}
 }

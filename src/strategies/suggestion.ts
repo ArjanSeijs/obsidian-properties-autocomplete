@@ -19,6 +19,19 @@ export function eqSuggestionResult(a: StrategySuggestionResult, b: StrategySugge
 	return false;
 }
 
+export function validateSuggestionResult(app: App, option: string, suggestion: StrategySuggestionResult) {
+	if (suggestion instanceof TFile) {
+		if (!option.startsWith("[[") || !option.endsWith("]]")) return false;
+		let file = app.metadataCache.getFirstLinkpathDest(option.substring(2, option.length - 2), '/')
+		return file?.path === suggestion.path
+	} else if (typeof suggestion === "string") {
+		return suggestion === option;
+	} else if (typeof suggestion === "object") {
+		return suggestion.value === option;
+	}
+	return false;
+}
+
 /**
  * Validator for `evaluateStrategyCode`
  * @see evalAndValidate
@@ -33,7 +46,7 @@ export function isSuggestionResult(value: unknown): value is StrategySuggestionR
 	return value instanceof TFile;
 }
 
-export function suggestionToString(app: App, suggestion: StrategySuggestionResult, context?: SuggesterContext, alias? : string) {
+export function suggestionToString(app: App, suggestion: StrategySuggestionResult, context?: SuggesterContext, alias?: string) {
 	if (typeof suggestion === "string") {
 		return suggestion;
 	} else if (suggestion instanceof TFile) {

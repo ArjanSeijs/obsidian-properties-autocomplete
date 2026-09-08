@@ -56,3 +56,10 @@ If your plugin does not need CSS, delete this file.
 .modal-container.property-setting-modal *> .setting-items *> .setting-item:has(.setting-item-control:empty)::before {
 	border-top-width: 0;
 }
+
+
+.multi-select-pill.invalid-suggestion::before	 {
+	color: var(--color-red);
+	content: '*';
+
+}
