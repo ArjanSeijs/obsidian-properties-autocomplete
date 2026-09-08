@@ -24,7 +24,6 @@ export async function evaluate(plugin: AutoPropPlugin, strategy: ConjunctionStra
 
 	const suggestions = intersection((a, b) => eqSuggestionResult(a, b), ...results);
 	return asyncFilter(suggestions => matchStrategies(plugin, suggestions, filters, context), suggestions)
-	// suggestions.filter(suggestions => matchStrategies(plugin, suggestions, filters, context))
 }
 
 export async function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: ConjunctionStrategy, context?: SuggesterContext): Promise<boolean> {

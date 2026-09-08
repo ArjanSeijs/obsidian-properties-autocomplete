@@ -33,11 +33,11 @@ export function isSuggestionResult(value: unknown): value is StrategySuggestionR
 	return value instanceof TFile;
 }
 
-export function suggestionToString(app: App, suggestion: StrategySuggestionResult, context?: SuggesterContext) {
+export function suggestionToString(app: App, suggestion: StrategySuggestionResult, context?: SuggesterContext, alias? : string) {
 	if (typeof suggestion === "string") {
 		return suggestion;
 	} else if (suggestion instanceof TFile) {
-		return app.fileManager.generateMarkdownLink(suggestion, context ? context.sourcePath : '/');
+		return app.fileManager.generateMarkdownLink(suggestion, context ? context.sourcePath : '/', undefined, alias ?? suggestion.basename);
 	} else {
 		return suggestion.value;
 	}

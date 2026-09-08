@@ -9,7 +9,7 @@ export type SuggestionResult<T extends object = object> = {
 	customData?: T
 };
 export type uninstaller = () => void
-export type SuggesterContext = { key: string, hoverSource: string, sourcePath: string };
+export type SuggesterContext = { key: string, sourcePath: string };
 
 export type StrategyCache = {[key : string] : StrategySuggestionResults}
 

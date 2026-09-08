@@ -4,7 +4,7 @@ import {
 	Notice,
 	PluginSettingTab, setIcon,
 	Setting,
-	SettingDefinitionItem
+	SettingDefinitionItem, SettingGroup
 } from "obsidian";
 import AutoPropPlugin from "./main";
 import {TagSuggester} from "./suggesters/tagsuggester";
@@ -12,7 +12,7 @@ import {FolderSuggester} from "./suggesters/foldersuggester";
 import {evalAndValidate} from "./util/code";
 import {TagStrategy} from "./strategies/tag";
 import {FolderStrategy} from "./strategies/folder";
-import {ListStrategy} from "./strategies/list";
+import {ListItem, ListStrategy} from "./strategies/list";
 import {CodeStrategy} from "./strategies/code";
 import {DisjunctionStrategy} from "./strategies/disjunction";
 import {ConjunctionStrategy} from "./strategies/conjunction";
@@ -21,16 +21,24 @@ import {SuggestionStrategy, SuggestionStrategyType} from "./strategies";
 import {IconSuggester} from "./suggesters/iconsuggester";
 import {isSuggestionResult} from "./strategies/suggestion";
 
-type PropertySetting = { strategy?: SuggestionStrategy, icon?: string };
+type PropertySetting = {
+	strategy?: SuggestionStrategy,
+	icon?: string,
+	validate?: boolean
+};
 
 export interface AutoPropSettings {
-	properties: { [key: string]: PropertySetting };
-	allowJs: boolean;
-	jsTimeout: number;
 	// In case of migrating configs to newer version.
 	version: string
-	enableIcons : boolean
+
+	properties: { [key: string]: PropertySetting };
+	// Code Execution
+	allowJs: boolean;
+	jsTimeout: number;
+	// Rendering
+	enableIcons: boolean
 	enableBackgrounds: boolean
+	enableValidation: boolean
 }
 
 export const DEFAULT_SETTINGS: AutoPropSettings = {
@@ -38,8 +46,9 @@ export const DEFAULT_SETTINGS: AutoPropSettings = {
 	properties: {},
 	allowJs: false,
 	jsTimeout: 5000,
-	enableIcons : true,
+	enableIcons: true,
 	enableBackgrounds: true,
+	enableValidation: true
 };
 
 
@@ -52,24 +61,41 @@ export class PropertySettingsTab extends PluginSettingTab {
 	getSettingDefinitions(): SettingDefinitionItem[] {
 		return [
 			{
-				name: 'Allow Javascript',
-				desc: 'Enable execution of custom user scripts for suggestions',
-				control: {type: 'toggle', key: 'allowJs'}
+				type: "group",
+				heading: "Code Execution",
+				items: [
+					{
+						name: 'Allow Javascript',
+						desc: 'Enable execution of custom user scripts for suggestions',
+						control: {type: 'toggle', key: 'allowJs'}
+					},
+					{
+						name: 'Javascript timeout',
+						desc: 'Time before custom user script timeouts in ms.',
+						control: {type: 'number', key: 'jsTimeout'}
+					}
+				]
 			},
 			{
-				name: 'Javascript timeout',
-				desc: 'Time before custom user script timeouts in ms.',
-				control: {type: 'number', key: 'jsTimeout'}
-			},
-			{
-				name: 'Enable Icons',
-				desc: 'Custom property icons.',
-				control: {type: 'toggle', key: 'enableIcons'}
-			},
-			{
-				name: 'Enable Backgrounds',
-				desc: 'Custom property backgrounds.',
-				control: {type: 'toggle', key: 'enableBackgrounds'}
+				type: "group",
+				heading: "Custom Rendering",
+				items: [
+					{
+						name: 'Enable Icons',
+						desc: 'Custom property icons.',
+						control: {type: 'toggle', key: 'enableIcons'}
+					},
+					{
+						name: 'Enable Backgrounds',
+						desc: 'Custom property backgrounds.',
+						control: {type: 'toggle', key: 'enableBackgrounds',}
+					},
+					{
+						name: 'Enable Backgrounds',
+						desc: 'Property verification.',
+						control: {type: 'toggle', key: 'enableValidation',}
+					}
+				]
 			}
 		];
 	}
@@ -88,6 +114,7 @@ export class PropertySettingsModal extends Modal {
 		super(plugin.app);
 		this.setTitle("Property settings for " + this.property);
 		this.render();
+		this.containerEl.addClass('property-setting-modal')
 	}
 
 
@@ -103,6 +130,10 @@ export class PropertySettingsModal extends Modal {
 		return this.settings[this.property]?.icon;
 	}
 
+	get validate() {
+		return this.settings[this.property]?.validate
+	}
+
 	set strategy(value: SuggestionStrategy | undefined) {
 		let setting = this.ensureSetting(this.property)
 		setting.strategy = value;
@@ -112,6 +143,12 @@ export class PropertySettingsModal extends Modal {
 	set icon(value: string | undefined) {
 		let setting = this.ensureSetting(this.property)
 		setting.icon = value;
+		this.cleanupSetting(this.property);
+	}
+
+	set validate(value: boolean | undefined) {
+		let setting = this.ensureSetting(this.property)
+		setting.validate = value;
 		this.cleanupSetting(this.property);
 	}
 
@@ -140,38 +177,44 @@ export class PropertySettingsModal extends Modal {
 
 
 	renderStrategySelector(contentEl: HTMLElement, setValue: (cb: SuggestionStrategy | undefined) => void, getValue: () => SuggestionStrategy | undefined, depth: number, options: RenderStrategyArgs = {}) {
-		const setting = new Setting(contentEl)
-		const strategyContentEl = contentEl.createDiv();
-		setting
-			.setName('Type')
-			.setDesc('Select the options for ' + this.property)
-			.addDropdown(dropdown => {
-				dropdown
-					.addOption('', '')
-					.addOption('Tag', 'Tag')
-					.addOption('Folder', 'Folder')
-					.addOption('List', 'List')
-				if (!options.js) dropdown.addOption('JS', 'JS')
-				if (!options.or) dropdown.addOption('Disjunction', 'Or')
-				if (!options.and) dropdown.addOption('Conjunction', 'And')
-				if (!options.negation) dropdown.addOption('Negation', 'Not')
-				dropdown
-					.setValue(getValue()?.type ?? '')
-					.onChange(async value => {
-						if (value === '') {
-							setValue(undefined)
-						} else {
-							setValue(defaultStrategy(value as SuggestionStrategyType));
-						}
-						this.renderStrategy(strategyContentEl, getValue(), depth);
-						await this.plugin.saveSettings();
-					})
-					.then(() => this.renderStrategy(strategyContentEl, getValue(), depth))
+
+		let group = new SettingGroup(contentEl);
+		let strategyContentEl: HTMLElement;
+		group
+			.setHeading('Strategy Settings')
+			.addSetting(setting => {
+				setting
+					.setName('Type')
+					.setDesc('Select the options for ' + this.property)
+					.addDropdown(dropdown => {
+						dropdown
+							.addOption('', '')
+							.addOption('Tag', 'Tag')
+							.addOption('Folder', 'Folder')
+							.addOption('List', 'List')
+						if (!options.js) dropdown.addOption('JS', 'JS')
+						if (!options.or) dropdown.addOption('Disjunction', 'Or')
+						if (!options.and) dropdown.addOption('Conjunction', 'And')
+						if (!options.negation) dropdown.addOption('Negation', 'Not')
+						dropdown
+							.setValue(getValue()?.type ?? '')
+							.onChange(async value => {
+								if (value === '') {
+									setValue(undefined)
+								} else {
+									setValue(defaultStrategy(value as SuggestionStrategyType));
+								}
+								if (strategyContentEl) this.renderStrategy(strategyContentEl, getValue(), depth);
+								await this.plugin.saveSettings();
+							})
+					});
 			})
+		strategyContentEl = group.listEl.createDiv()
+		this.renderStrategy(strategyContentEl, getValue(), depth);
 
 	}
 
-	private renderStrategy(contentEl: HTMLDivElement, value: SuggestionStrategy | undefined, depth: number) {
+	private renderStrategy(contentEl: HTMLElement, value: SuggestionStrategy | undefined, depth: number) {
 		contentEl.empty();
 		contentEl.addClass(`depth-${depth % 3}`, 'strategy-nested');
 		switch (value?.type) {
@@ -194,7 +237,7 @@ export class PropertySettingsModal extends Modal {
 		}
 	}
 
-	private renderTagStrategy(contentEl: HTMLDivElement, strategy: TagStrategy) {
+	private renderTagStrategy(contentEl: HTMLElement, strategy: TagStrategy) {
 		new Setting(contentEl)
 			.setName('Tag')
 			.setDesc('Select the tag the file should match')
@@ -224,7 +267,7 @@ export class PropertySettingsModal extends Modal {
 
 	}
 
-	private renderFolderStrategy(contentEl: HTMLDivElement, strategy: FolderStrategy) {
+	private renderFolderStrategy(contentEl: HTMLElement, strategy: FolderStrategy) {
 		new Setting(contentEl)
 			.setName('Folder')
 			.setDesc('Select the folder should match')
@@ -251,67 +294,92 @@ export class PropertySettingsModal extends Modal {
 				}));
 	}
 
-	private renderListStrategy(contentEl: HTMLDivElement, strategy: ListStrategy) {
-		let setting = new Setting(contentEl);
-		let listElement = contentEl.createDiv();
-		setting
-			.setName('List')
-			.setDesc('List of options')
-			.addButton(btn =>
-				btn.setIcon('plus').onClick(_ => {
-					strategy.options.push({label: '', value: ''});
-					this.renderListOptions(listElement, strategy);
+	private renderListStrategy(contentEl: HTMLElement, strategy: ListStrategy) {
+		let settings: Setting[] = []
+		let onChange = () => {
+			for (let i = 0; i < Math.max(strategy.options.length, settings.length); i++) {
+				let option = strategy.options[i];
+				let setting = settings[i];
+				if (!setting) {
+					console.error(`Could not render option in list on index: ${i}`)
+				} else {
+					if (option) this.renderListOption(setting, option, strategy, i, onChange)
+					else setting.clear();
+				}
+			}
+		}
+		let settingGroup = new SettingGroup(contentEl)
+			.setHeading('List')
+			.addExtraButton(btn =>
+				btn.setIcon('plus').onClick(() => {
+					const option = {label: '', value: ''};
+					strategy.options.push(option);
+					if (settings[strategy.options.length - 1]) {
+						this.renderListOption(settings[strategy.options.length - 1]!, option, strategy, strategy.options.length - 1, onChange);
+					} else {
+						settingGroup.addSetting(setting => {
+								settings.push(setting);
+								this.renderListOption(setting, option, strategy, strategy.options.length - 1, onChange);
+							}
+						);
+					}
 				})
 			)
-		this.renderListOptions(listElement, strategy);
 
-	}
-
-	private renderListOptions(element: HTMLDivElement, strategy: ListStrategy) {
-		element.empty();
 		for (let i = 0; i < strategy.options.length; i++) {
 			let option = strategy.options[i]!;
-			new Setting(element)
-				.addText(txt => txt.setPlaceholder('Label').setValue(option.label ?? '')
-					.onChange(async value => {
-						option.label = value;
-						await this.plugin.saveSettings();
-					})
-				)
-				.addText(txt => txt.setPlaceholder('Value').setValue(option.value)
-					.onChange(async value => {
-						option.value = value;
-						await this.plugin.saveSettings();
-					}))
-				.addColorPicker(color => color.setValue(option.color ?? '#000000')
-					.onChange(async value => {
-						option.color = value !== '#000000' ? value : undefined;
-						await this.plugin.saveSettings();
-					})
-				)
-				.addButton(btn => btn.setIcon('move-up').onClick(async _ => {
-					let swap = strategy.options[i]!;
-					strategy.options[i] = strategy.options[i - 1]!;
-					strategy.options[i - 1] = swap;
-					await this.plugin.saveSettings();
-					this.renderListOptions(element, strategy);
-				}).setDisabled(i === 0))
-				.addButton(btn => btn.setIcon('move-down').onClick(async _ => {
-					let swap = strategy.options[i]!;
-					strategy.options[i] = strategy.options[i + 1]!;
-					strategy.options[i + 1] = swap;
-					await this.plugin.saveSettings();
-					this.renderListOptions(element, strategy);
-				}).setDisabled(i === strategy.options.length - 1))
-				.addButton(btn => btn.setIcon('trash').onClick(_ => {
-					strategy.options.splice(i, 1);
-					// "Tail recursion (ish)" should be fine?
-					this.renderListOptions(element, strategy);
-				}))
+			settingGroup.addSetting(setting => {
+				settings.push(setting);
+				this.renderListOption(setting, option, strategy, i, onChange);
+			})
 		}
 	}
 
-	private renderCodeBlock(element: HTMLDivElement, strategy: CodeStrategy) {
+	private renderListOption(setting: Setting, option: ListItem, strategy: ListStrategy, idx: number, onChange: () => void) {
+		setting
+			.clear()
+			.addText(txt => txt.setPlaceholder('Label').setValue(option.label ?? '')
+				.onChange(async value => {
+					option.label = value;
+					await this.plugin.saveSettings();
+				})
+			)
+			.addText(txt => txt.setPlaceholder('Value').setValue(option.value)
+				.onChange(async value => {
+					option.value = value;
+					await this.plugin.saveSettings();
+				}))
+			.addColorPicker(color => color.setValue(option.color ?? '#000000')
+				.onChange(async value => {
+					option.color = value !== '#000000' ? value : undefined;
+					await this.plugin.saveSettings();
+				})
+			)
+			.addButton(btn => btn.setIcon('move-up').onClick(async _ => {
+				let swap = strategy.options[idx]!;
+				strategy.options[idx] = strategy.options[idx - 1]!;
+				strategy.options[idx - 1] = swap;
+				await this.plugin.saveSettings();
+				onChange()
+			}).setDisabled(idx === 0))
+			.addButton(btn => btn.setIcon('move-down').onClick(async _ => {
+				let swap = strategy.options[idx]!;
+				strategy.options[idx] = strategy.options[idx + 1]!;
+				strategy.options[idx + 1] = swap;
+				await this.plugin.saveSettings();
+				onChange()
+			}).setDisabled(idx === strategy.options.length - 1))
+			.addButton(btn => btn.setIcon('trash').onClick(async _ => {
+				strategy.options.splice(idx, 1);
+				// "Tail recursion (ish)" should be fine?
+				await this.plugin.saveSettings();
+				void setting.clear()
+				onChange()
+			}));
+		setting.controlEl.addClass('setting-item-control-flex');
+	}
+
+	private renderCodeBlock(element: HTMLElement, strategy: CodeStrategy) {
 		new Setting(element)
 			.setName('JavaScript')
 			.setDesc('JavaScript code: function(app) { ... }')
@@ -321,11 +389,11 @@ export class PropertySettingsModal extends Modal {
 			}))
 			.addButton(btn =>
 				btn.setIcon('square-chevron-right')
-					.onClick(_ => this.validate(btn, strategy)));
+					.onClick(_ => this.validateCode(btn, strategy)));
 
 	}
 
-	private async validate(btn: ButtonComponent, strategy: CodeStrategy) {
+	private async validateCode(btn: ButtonComponent, strategy: CodeStrategy) {
 		btn.setIcon('circle-dashed')
 		btn.setDisabled(true);
 		let result = await evalAndValidate(this.plugin, strategy.code, (value) => isSuggestionResult(value))
@@ -336,7 +404,7 @@ export class PropertySettingsModal extends Modal {
 		btn.setIcon('square-chevron-right')
 	}
 
-	private renderDisjunction(element: HTMLDivElement, strategy: DisjunctionStrategy, depth: number) {
+	private renderDisjunction(element: HTMLElement, strategy: DisjunctionStrategy, depth: number) {
 		let setting = new Setting(element);
 		let strategyListElement = element.createDiv();
 		setting
@@ -352,7 +420,7 @@ export class PropertySettingsModal extends Modal {
 
 	}
 
-	private renderConjunctions(element: HTMLDivElement, strategy: ConjunctionStrategy, depth: number) {
+	private renderConjunctions(element: HTMLElement, strategy: ConjunctionStrategy, depth: number) {
 		let setting = new Setting(element);
 		let strategyListElement = element.createDiv();
 		setting
@@ -373,7 +441,7 @@ export class PropertySettingsModal extends Modal {
 	 * @param depth
 	 * @param options
 	 */
-	private renderStrategyList(element: HTMLDivElement, strategy: ConjunctionStrategy | DisjunctionStrategy, depth: number, options: RenderStrategyArgs) {
+	private renderStrategyList(element: HTMLElement, strategy: ConjunctionStrategy | DisjunctionStrategy, depth: number, options: RenderStrategyArgs) {
 		element.empty()
 		for (let i = 0; i < strategy.strategies.length; i++) {
 			new Setting(element)
@@ -407,7 +475,7 @@ export class PropertySettingsModal extends Modal {
 		}
 	}
 
-	private renderNegation(contentEl: HTMLDivElement, strategy: NegationStrategy, depth: number) {
+	private renderNegation(contentEl: HTMLElement, strategy: NegationStrategy, depth: number) {
 		new Setting(contentEl)
 			.setName('Negation')
 			.setHeading();
@@ -421,37 +489,51 @@ export class PropertySettingsModal extends Modal {
 
 	private renderAppearanceSelection(contentEl: HTMLElement) {
 		let button: DisplayValueComponent | undefined;
-		new Setting(contentEl)
-			.setName('Appearance')
-			.setDesc('Property icon and color')
-			.addDisplayValue(btn => {
-					if (this.icon) setIcon(btn.valueEl, this.icon)
-					button = btn;
-				}
-			)
-			.addText(text => {
-				text.setValue(this.icon ?? '')
-					.onChange(value => {
+		new SettingGroup(contentEl)
+			.setHeading("Frontmatter Appearance")
+			.addSetting(setting => void setting
+				.setName('Icons')
+				.setDesc('Enable/disable icons in plugin settings')
+				.addDisplayValue(btn => {
+						if (this.icon) setIcon(btn.valueEl, this.icon)
+						button = btn;
+					}
+				)
+				.addText(text => {
+					text.setValue(this.icon ?? '')
+						.onChange(value => {
+							this.icon = value ?? undefined;
+							if (button && this.icon) setIcon(button.valueEl, this.icon)
+						})
+					let suggester = new IconSuggester(this.app, text.inputEl)
+					suggester.onSelect(async value => {
+						text.setValue(value);
 						this.icon = value ?? undefined;
 						if (button && this.icon) setIcon(button.valueEl, this.icon)
+						suggester.close();
+						this.plugin.applyLayoutChanges()
+						await this.plugin.saveSettings()
 					})
-				let suggester = new IconSuggester(this.app, text.inputEl)
-				suggester.onSelect(async value => {
-					text.setValue(value);
-					this.icon = value ?? undefined;
-					if (button && this.icon) setIcon(button.valueEl, this.icon)
-					suggester.close();
-					this.plugin.applyLayoutChanges()
-					await this.plugin.saveSettings()
-				})
 
-			})
+				}))
+			.addSetting(setting => void setting
+				.setName("Validation")
+				.setDesc('Whether to validate property values')
+				.addToggle(toggle => {
+					toggle.setValue(this.validate ?? false)
+						.onChange(async value => {
+							this.validate = value ?? undefined;
+							this.plugin.applyLayoutChanges()
+							await this.plugin.saveSettings()
+						})
+				})
+			)
 
 	}
 
 	onClose() {
 		super.onClose();
-		if(this.strategy) {
+		if (this.strategy) {
 			void this.plugin.strategyCacheSet(this.property, this.strategy)
 				.then(() => this.plugin.applyLayout(this.propertyEl))
 		} else {

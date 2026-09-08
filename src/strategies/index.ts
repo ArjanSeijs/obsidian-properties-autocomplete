@@ -18,6 +18,7 @@ import {App, prepareFuzzySearch, TFile} from "obsidian";
 
 import {SuggesterContext, FuzzySearcher, SuggestionResult} from "../types";
 import {StrategySuggestionResult, StrategySuggestionResults, suggestionToString} from "./suggestion";
+import {getAliases} from "../util/fileutil";
 
 export type SuggestionStrategy =
 	TagStrategy
@@ -79,29 +80,41 @@ export async function matchStrategy(plugin: AutoPropPlugin, suggestion: Strategy
 
 export async function queryStrategy(plugin: AutoPropPlugin, strategy: SuggestionStrategy, query: string, context: SuggesterContext) {
 	let results = await evaluateStrategy(plugin, strategy, context);
-	return results.map(suggestion => fuzzySearchSuggestions(plugin.app, suggestion, prepareFuzzySearch(query), context)).filter(value => value != null)
+	return results.map(suggestion => fuzzySearchSuggestions(plugin.app, suggestion, prepareFuzzySearch(query), context))
+		.flat()
+		.filter(value => value != null)
 }
 
 
-function fuzzySearchSuggestions(app: App, suggestion: StrategySuggestionResult, fuzzySearcher: FuzzySearcher, context: SuggesterContext): SuggestionResult | null {
-	if (typeof suggestion === "string" || suggestion instanceof TFile) {
+function fuzzySearchSuggestions(app: App, suggestion: StrategySuggestionResult, fuzzySearcher: FuzzySearcher, context: SuggesterContext): SuggestionResult[] {
+	if (typeof suggestion === "string") {
 		let text = suggestionToString(app, suggestion, context);
 		let result = fuzzySearcher(text);
-		if (!result) return null;
-		return {type: 'text', score: result.score, matches: result.matches, text}
+		if (!result) return [];
+		return [{type: 'text', score: result.score, matches: result.matches, text}]
+	} else if (suggestion instanceof TFile) {
+		let fileText = suggestionToString(app, suggestion, context);
+		let aliasTexts = getAliases(app, suggestion).map(value => suggestionToString(app, suggestion, context, value));
+		return [fileText, ...aliasTexts]
+			.map(text => {
+				let result = fuzzySearcher(text)
+				if (!result) return null;
+				return {type: 'text', score: result.score, matches: result.matches, text}
+			})
+			.filter(value => value != null)
 	} else {
 		let resultValue = fuzzySearcher(suggestion.value);
 		let resultLabel = suggestion.label ? fuzzySearcher(suggestion.label) : null
 		let result = resultLabel ?? resultValue;
-		if (!result) return null;
+		if (!result) return [];
 		const text = suggestion.label ? suggestion.label : suggestion.value;
-		return {
+		return [{
 			type: 'text',
 			score: result.score,
 			matches: result.matches,
 			text: text,
 			customData: {color: suggestion.color, actualValue: suggestion.label ? suggestion.value : undefined}
-		}
+		}]
 	}
 }
 
