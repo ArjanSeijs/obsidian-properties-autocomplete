@@ -132,6 +132,7 @@ export default class AutoPropPlugin extends Plugin {
 	}
 
 	validateValue(valueEl: HTMLElement, key: string) {
+		valueEl.removeClass('invalid-suggestion')
 		if (!this.settings.enableBackgrounds) return;
 		if (!this.strategyCache[key]) return
 		if (!this.settings.properties[key]?.validate) return
