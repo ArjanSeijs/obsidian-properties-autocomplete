@@ -6,7 +6,7 @@ import {ObsidianPropertySuggester, SuggestionResult, uninstaller} from "../types
 
 const MONKEY_KEY = "eternal.prop";
 
-export function patchSuggester(plugin: AutoPropPlugin) {
+export function patchSuggester(plugin: AutoPropPlugin): uninstaller {
 	// Patch getValue of AbstractInputSuggest to intercept an instance of the Internal PropertySuggester.
 	let patch: uninstaller[] = [];
 	let uninstaller = around(AbstractInputSuggest.prototype, {
@@ -28,7 +28,7 @@ export function patchSuggester(plugin: AutoPropPlugin) {
 	}
 }
 
-function patchGetSuggestions(plugin: AutoPropPlugin, obj: ObsidianPropertySuggester<SuggestionResult>): () => void {
+function patchGetSuggestions(plugin: AutoPropPlugin, obj: ObsidianPropertySuggester<SuggestionResult>): uninstaller {
 	const prototypeOf = Object.getPrototypeOf(obj) as (ObsidianPropertySuggester<SuggestionResult>);
 	return around(prototypeOf, {
 		getSuggestions(original) {
@@ -89,20 +89,28 @@ async function getSuggestionsPatch(instance: ObsidianPropertySuggester<Suggestio
 	const results = await original.call(instance, query);
 	const property = instance.context.key.toLowerCase();
 	const strategy = plugin.settings.properties[property]?.strategy;
-	if (strategy) {
-		let additional = await queryStrategy(plugin, strategy, query, instance.context);
-		// Filter out duplicates but do copy customData
-		additional = additional.filter(value => {
-			let duplicate = results.find(other => other.text === value.text)
-			if (duplicate) {
-				duplicate.customData = value.customData;
-				return false;
-			}
-			return true
-		})
-		results.push(...additional);
+	if (!strategy) return results;
+
+	let additional = await queryStrategy(plugin, strategy, query, instance.context);
+	// Filter out duplicates but do copy customData
+	additional = additional.filter(value => {
+		let duplicate = results.find(other => other.text === value.text)
+		if (duplicate) {
+			duplicate.customData = value.customData;
+			return false;
+		}
+		return true
+	})
+	switch (plugin.settings.properties[property]?.defaultSuggestionHandling) {
+		case "append":
+			return [...results, ...additional]
+		case "prepend":
+			return [...additional, ...results]
+		case "replace":
+			return additional;
+		default:
+			return [...results, ...additional]
 	}
-	return results;
 }
 
 function renderSuggestionPatch(instance: ObsidianPropertySuggester<SuggestionResult>, original: (value: SuggestionResult, el: HTMLElement) => void, value: SuggestionResult, el: HTMLElement) {

@@ -21,10 +21,12 @@ import {SuggestionStrategy, SuggestionStrategyType} from "./strategies";
 import {IconSuggester} from "./suggesters/iconsuggester";
 import {isSuggestionResult} from "./strategies/suggestion";
 
+type DefaultSuggestionHandling = 'append' | 'prepend' | 'replace';
 type PropertySetting = {
 	strategy?: SuggestionStrategy,
 	icon?: string,
 	validate?: boolean
+	defaultSuggestionHandling?: DefaultSuggestionHandling
 };
 
 export interface AutoPropSettings {
@@ -62,22 +64,6 @@ export class PropertySettingsTab extends PluginSettingTab {
 		return [
 			{
 				type: "group",
-				heading: "Code Execution",
-				items: [
-					{
-						name: 'Allow Javascript',
-						desc: 'Enable execution of custom user scripts for suggestions',
-						control: {type: 'toggle', key: 'allowJs'}
-					},
-					{
-						name: 'Javascript timeout',
-						desc: 'Time before custom user script timeouts in ms.',
-						control: {type: 'number', key: 'jsTimeout'}
-					}
-				]
-			},
-			{
-				type: "group",
 				heading: "Custom Rendering",
 				items: [
 					{
@@ -96,7 +82,23 @@ export class PropertySettingsTab extends PluginSettingTab {
 						control: {type: 'toggle', key: 'enableValidation',}
 					}
 				]
-			}
+			},
+			{
+				type: "group",
+				heading: "Code Execution",
+				items: [
+					{
+						name: 'Allow Javascript',
+						desc: 'Enable execution of custom user scripts for suggestions',
+						control: {type: 'toggle', key: 'allowJs'}
+					},
+					{
+						name: 'Javascript timeout',
+						desc: 'Time before custom user script timeouts in ms.',
+						control: {type: 'number', key: 'jsTimeout'}
+					}
+				]
+			},
 		];
 	}
 }
@@ -134,6 +136,10 @@ export class PropertySettingsModal extends Modal {
 		return this.settings[this.property]?.validate
 	}
 
+	get defaultSuggestionHandling() {
+		return this.settings[this.property]?.defaultSuggestionHandling ?? "default"
+	}
+
 	set strategy(value: SuggestionStrategy | undefined) {
 		let setting = this.ensureSetting(this.property)
 		setting.strategy = value;
@@ -149,6 +155,12 @@ export class PropertySettingsModal extends Modal {
 	set validate(value: boolean | undefined) {
 		let setting = this.ensureSetting(this.property)
 		setting.validate = value;
+		this.cleanupSetting(this.property);
+	}
+
+	set defaultSuggestionHandling(value: DefaultSuggestionHandling | 'default') {
+		let setting = this.ensureSetting(this.property)
+		setting.defaultSuggestionHandling = value === 'default' ? undefined : value;
 		this.cleanupSetting(this.property);
 	}
 
@@ -527,7 +539,22 @@ export class PropertySettingsModal extends Modal {
 							await this.plugin.saveSettings()
 						})
 				})
-			)
+			).addSetting(setting => void setting
+				.setName("Default suggestion handling")
+				.setDesc("Append, prepend or replace the original Obsidian suggestions.")
+				.addDropdown(dropdown => {
+					dropdown
+						.addOption('default','Default')
+						.addOption('append', 'Append')
+						.addOption('prepend', 'Prepend')
+						.addOption('replace', 'Replace')
+						.setValue(this.defaultSuggestionHandling)
+						.onChange(async value => {
+							this.defaultSuggestionHandling = value as DefaultSuggestionHandling | 'default';
+							await this.plugin.saveSettings();
+						})
+				})
+		)
 
 	}
 
