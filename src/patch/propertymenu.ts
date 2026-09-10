@@ -3,6 +3,10 @@ import {around} from "monkey-around";
 import AutoPropPlugin from "../main";
 import {PropertySettingsModal} from "../settings";
 
+/**
+ * Inject the property settings modal into the right click property menu.
+ * @param plugin
+ */
 export function patchPropertyMenu(plugin: AutoPropPlugin) {
 	return around(Menu.prototype, {
 		showAtMouseEvent(old: (evt: MouseEvent) => Menu) {

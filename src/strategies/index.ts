@@ -16,7 +16,7 @@ import type {TagStrategy} from "./tag";
 import * as Tag from "./tag";
 import {App, prepareFuzzySearch, TFile} from "obsidian";
 
-import {SuggesterContext, FuzzySearcher, SuggestionResult} from "../types";
+import {FuzzySearcher, SuggesterContext, SuggestionResult} from "../types";
 import {StrategySuggestionResult, StrategySuggestionResults, suggestionToString} from "./suggestion";
 import {getAliases} from "../util/fileutil";
 
@@ -79,6 +79,7 @@ export async function matchStrategy(plugin: AutoPropPlugin, suggestion: Strategy
 }
 
 export async function queryStrategy(plugin: AutoPropPlugin, strategy: SuggestionStrategy, query: string, context: SuggesterContext) {
+	if (!isProvider(strategy)) return [];
 	let results = await evaluateStrategy(plugin, strategy, context);
 	return results.map(suggestion => fuzzySearchSuggestions(plugin.app, suggestion, prepareFuzzySearch(query), context))
 		.flat()
@@ -119,3 +120,24 @@ function fuzzySearchSuggestions(app: App, suggestion: StrategySuggestionResult, 
 }
 
 
+/**
+ * Not all strategies can be used to generate a list of suggestions.
+ * For example, a negation of a list cannot be used to generate a list of suggestions, only filter already existing lists.
+ * A provider is a strategy that can be used to retrieve a list of values.
+ * @param value
+ */
+export function isProvider(value: SuggestionStrategy): boolean {
+	switch (value.type) {
+		case "List":
+		case "Tag":
+		case "Folder":
+		case "JS":
+			return true;
+		case "Disjunction":
+			return value.strategies.every(strategy => isProvider(strategy));
+		case "Conjunction":
+			return value.strategies.some(strategy => isProvider(strategy))
+		case "Negation":
+			return value.strategy.type === "Tag" || value.strategy.type === "Folder";
+	}
+}

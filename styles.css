@@ -67,3 +67,18 @@ If your plugin does not need CSS, delete this file.
 	color: var(--color-red);
 	content: '*';
 }
+
+.query-valid {
+	--icon-color: var(--color-green);
+	--icon-size: var(--icon-xl);
+}
+
+.query-invalid {
+	--icon-color: var(--color-red);
+	--icon-size: var(--icon-xl);
+}
+
+.query-unknown {
+	--icon-color: var(--color-yellow);
+	--icon-size: var(--icon-xl);
+}

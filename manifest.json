@@ -3,9 +3,8 @@
 	"name": "Autocomplete Properties",
 	"version": "0.0.1",
 	"minAppVersion": "1.13.7",
-	"description": "Control the properties autocomplete of obsidian frontmatter properties.",
+	"description": "Enhance the obsidian property suggestions through the use of custom rules.",
 	"author": "EternalSoap",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"authorUrl": "eternalsoap.nl",
 	"isDesktopOnly": false
 }

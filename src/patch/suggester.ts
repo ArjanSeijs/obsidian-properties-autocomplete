@@ -1,11 +1,15 @@
 import {around, dedupe} from "monkey-around";
 import AutoPropPlugin from "../main";
-import {AbstractInputSuggest} from "obsidian";
+import {AbstractInputSuggest, Notice} from "obsidian";
 import {queryStrategy} from "../strategies";
 import {ObsidianPropertySuggester, SuggestionResult, uninstaller} from "../types";
 
 const MONKEY_KEY = "eternal.prop";
 
+/**
+ * Patch the AbstractInputSuggest.prototype getValue function to intercept an instance of the property suggestion menu.
+ * @param plugin
+ */
 export function patchSuggester(plugin: AutoPropPlugin): uninstaller {
 	// Patch getValue of AbstractInputSuggest to intercept an instance of the Internal PropertySuggester.
 	let patch: uninstaller[] = [];
@@ -28,6 +32,11 @@ export function patchSuggester(plugin: AutoPropPlugin): uninstaller {
 	}
 }
 
+/**
+ * Patch obsidian property suggester.
+ * @param plugin
+ * @param obj
+ */
 function patchGetSuggestions(plugin: AutoPropPlugin, obj: ObsidianPropertySuggester<SuggestionResult>): uninstaller {
 	const prototypeOf = Object.getPrototypeOf(obj) as (ObsidianPropertySuggester<SuggestionResult>);
 	return around(prototypeOf, {
@@ -91,7 +100,15 @@ async function getSuggestionsPatch(instance: ObsidianPropertySuggester<Suggestio
 	const strategy = plugin.settings.properties[property]?.strategy;
 	if (!strategy) return results;
 
-	let additional = await queryStrategy(plugin, strategy, query, instance.context);
+
+	let additional: FlatArray<SuggestionResult[][], 1>[];
+	try {
+		additional = await queryStrategy(plugin, strategy, query, instance.context);
+	} catch (error) {
+		if (error instanceof Error) new Notice(error.message)
+		console.error(error);
+		return [];
+	}
 	// Filter out duplicates but do copy customData
 	additional = additional.filter(value => {
 		let duplicate = results.find(other => other.text === value.text)
@@ -113,6 +130,13 @@ async function getSuggestionsPatch(instance: ObsidianPropertySuggester<Suggestio
 	}
 }
 
+/**
+ *
+ * @param instance
+ * @param original
+ * @param value
+ * @param el
+ */
 function renderSuggestionPatch(instance: ObsidianPropertySuggester<SuggestionResult>, original: (value: SuggestionResult, el: HTMLElement) => void, value: SuggestionResult, el: HTMLElement) {
 	original.call(instance, value, el)
 	if (value.customData) {
@@ -123,6 +147,13 @@ function renderSuggestionPatch(instance: ObsidianPropertySuggester<SuggestionRes
 	}
 }
 
+/**
+ *
+ * @param instance
+ * @param original
+ * @param value
+ * @param evt
+ */
 function selectSuggestionPatch(instance: ObsidianPropertySuggester<SuggestionResult>, original: (value: SuggestionResult, evt: (MouseEvent | KeyboardEvent)) => void, value: SuggestionResult, evt: MouseEvent | KeyboardEvent) {
 	if (value.customData) {
 		if ("actualValue" in value.customData && typeof value.customData.actualValue === "string" && value.customData.actualValue !== "") {
@@ -134,6 +165,10 @@ function selectSuggestionPatch(instance: ObsidianPropertySuggester<SuggestionRes
 	return original.call(instance, value, evt)
 }
 
+/**
+ *
+ * @param instance
+ */
 function isPropertySuggester<T>(instance: Partial<ObsidianPropertySuggester<T>>): instance is ObsidianPropertySuggester<T> {
 	const suggestEl = instance.suggestEl;
 	return suggestEl !== undefined &&

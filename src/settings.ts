@@ -1,5 +1,5 @@
 import {
-	ButtonComponent, DisplayValueComponent,
+	ButtonComponent, DisplayValueComponent, ExtraButtonComponent,
 	Modal,
 	Notice,
 	PluginSettingTab, setIcon,
@@ -17,7 +17,7 @@ import {CodeStrategy} from "./strategies/code";
 import {DisjunctionStrategy} from "./strategies/disjunction";
 import {ConjunctionStrategy} from "./strategies/conjunction";
 import {NegationStrategy} from "./strategies/negation";
-import {SuggestionStrategy, SuggestionStrategyType} from "./strategies";
+import {isProvider, SuggestionStrategy, SuggestionStrategyType} from "./strategies";
 import {IconSuggester} from "./suggesters/iconsuggester";
 import {isSuggestionResult} from "./strategies/suggestion";
 
@@ -112,6 +112,9 @@ type RenderStrategyArgs = {
 }
 
 export class PropertySettingsModal extends Modal {
+
+	private warningBtn?: ExtraButtonComponent;
+
 	constructor(private plugin: AutoPropPlugin, private property: string, private propertyEl: HTMLElement) {
 		super(plugin.app);
 		this.setTitle("Property settings for " + this.property);
@@ -179,21 +182,69 @@ export class PropertySettingsModal extends Modal {
 		}
 	}
 
+	async onQueryChange() {
+		this.validateQuery();
+		await this.plugin.saveSettings();
+	}
+
+	validateQuery() {
+		if (!this.warningBtn) return;
+		this.warningBtn.extraSettingsEl.removeClass('query-unknown', 'query-valid', 'query-invalid');
+		if (!this.strategy) {
+			this.warningBtn.setIcon('badge-question-mark').setTooltip('')
+			this.warningBtn.extraSettingsEl.addClass('query-unknown')
+			return
+		}
+		if (isProvider(this.strategy)) {
+			this.warningBtn.setIcon('check').setTooltip('')
+			this.warningBtn.extraSettingsEl.addClass('query-valid')
+			return true;
+		} else {
+			this.warningBtn.setIcon('shield-x').setTooltip('Invalid query. Query has no method of providing suggestions.')
+			this.warningBtn.extraSettingsEl.addClass('query-invalid')
+			return false;
+		}
+	}
+
+	onClose() {
+		super.onClose();
+		if (this.strategy) {
+			void this.plugin.strategyCacheSet(this.property, this.strategy)
+				.then(() => this.plugin.applyLayout(this.propertyEl))
+		} else {
+			this.plugin.applyLayout(this.propertyEl);
+		}
+
+
+	}
+
 	render() {
 		this.contentEl.empty()
 		this.renderAppearanceSelection(this.contentEl)
-		this.renderStrategySelector(this.contentEl,
+		this.renderTopStrategySelector(this.contentEl,
 			(value) => this.strategy = value,
 			() => this.strategy, 0);
 	}
 
 
-	renderStrategySelector(contentEl: HTMLElement, setValue: (cb: SuggestionStrategy | undefined) => void, getValue: () => SuggestionStrategy | undefined, depth: number, options: RenderStrategyArgs = {}) {
+	renderTopStrategySelector(contentEl: HTMLElement, setValue: (cb: SuggestionStrategy | undefined) => void, getValue: () => SuggestionStrategy | undefined, depth: number, options: RenderStrategyArgs = {}) {
 
+		let group = new SettingGroup(contentEl).setHeading('Strategy Settings').addExtraButton(btn => {
+			this.warningBtn = btn;
+			this.validateQuery();
+		})
+		this.renderSelector(group, options, getValue, setValue, depth);
+
+	}
+
+	renderStrategySelector(contentEl: HTMLElement, setValue: (cb: SuggestionStrategy | undefined) => void, getValue: () => SuggestionStrategy | undefined, depth: number, options: RenderStrategyArgs = {}) {
 		let group = new SettingGroup(contentEl);
+		this.renderSelector(group, options, getValue, setValue, depth);
+	}
+
+	private renderSelector(group: SettingGroup, options: RenderStrategyArgs, getValue: () => (SuggestionStrategy | undefined), setValue: (cb: (SuggestionStrategy | undefined)) => void, depth: number) {
 		let strategyContentEl: HTMLElement;
 		group
-			.setHeading('Strategy Settings')
 			.addSetting(setting => {
 				setting
 					.setName('Type')
@@ -217,13 +268,12 @@ export class PropertySettingsModal extends Modal {
 									setValue(defaultStrategy(value as SuggestionStrategyType));
 								}
 								if (strategyContentEl) this.renderStrategy(strategyContentEl, getValue(), depth);
-								await this.plugin.saveSettings();
+								await this.onQueryChange()
 							})
 					});
 			})
 		strategyContentEl = group.listEl.createDiv()
 		this.renderStrategy(strategyContentEl, getValue(), depth);
-
 	}
 
 	private renderStrategy(contentEl: HTMLElement, value: SuggestionStrategy | undefined, depth: number) {
@@ -257,13 +307,13 @@ export class PropertySettingsModal extends Modal {
 				text.setValue(strategy?.tag ?? '')
 					.onChange(async value => {
 						strategy.tag = value;
-						await this.plugin.saveSettings();
+						await this.onQueryChange()
 					});
 				const suggest = new TagSuggester(this.app, text.inputEl);
 				suggest.onSelect(async (tag) => {
 					text.setValue(tag);
 					strategy.tag = tag;
-					await this.plugin.saveSettings();
+					await this.onQueryChange()
 					suggest.close();
 				});
 
@@ -274,7 +324,7 @@ export class PropertySettingsModal extends Modal {
 			.addToggle(toggle => toggle.setValue(strategy.exact)
 				.onChange(async value => {
 					strategy.exact = value;
-					await this.plugin.saveSettings();
+					await this.onQueryChange()
 				}));
 
 	}
@@ -287,13 +337,13 @@ export class PropertySettingsModal extends Modal {
 				text.setValue(strategy?.folder ?? '')
 					.onChange(async value => {
 						strategy.folder = value;
-						await this.plugin.saveSettings();
+						await this.onQueryChange()
 					})
 				const suggest = new FolderSuggester(this.app, text.inputEl);
 				suggest.onSelect(async (tag) => {
 					text.setValue(tag.path);
 					strategy.folder = tag.path;
-					await this.plugin.saveSettings();
+					await this.onQueryChange()
 					suggest.close();
 				});
 			})
@@ -302,7 +352,7 @@ export class PropertySettingsModal extends Modal {
 			.addToggle(toggle => toggle.setValue(strategy.includeSubFolders)
 				.onChange(async value => {
 					strategy.includeSubFolders = value;
-					await this.plugin.saveSettings();
+					await this.onQueryChange()
 				}));
 	}
 
@@ -323,7 +373,7 @@ export class PropertySettingsModal extends Modal {
 		let settingGroup = new SettingGroup(contentEl)
 			.setHeading('List')
 			.addExtraButton(btn =>
-				btn.setIcon('plus').onClick(() => {
+				btn.setIcon('plus').onClick(async () => {
 					const option = {label: '', value: ''};
 					strategy.options.push(option);
 					if (settings[strategy.options.length - 1]) {
@@ -335,6 +385,7 @@ export class PropertySettingsModal extends Modal {
 							}
 						);
 					}
+					await this.onQueryChange()
 				})
 			)
 
@@ -353,38 +404,38 @@ export class PropertySettingsModal extends Modal {
 			.addText(txt => txt.setPlaceholder('Label').setValue(option.label ?? '')
 				.onChange(async value => {
 					option.label = value;
-					await this.plugin.saveSettings();
+					await this.onQueryChange()
 				})
 			)
 			.addText(txt => txt.setPlaceholder('Value').setValue(option.value)
 				.onChange(async value => {
 					option.value = value;
-					await this.plugin.saveSettings();
+					await this.onQueryChange()
 				}))
 			.addColorPicker(color => color.setValue(option.color ?? '#000000')
 				.onChange(async value => {
 					option.color = value !== '#000000' ? value : undefined;
-					await this.plugin.saveSettings();
+					await this.onQueryChange()
 				})
 			)
 			.addButton(btn => btn.setIcon('move-up').onClick(async _ => {
 				let swap = strategy.options[idx]!;
 				strategy.options[idx] = strategy.options[idx - 1]!;
 				strategy.options[idx - 1] = swap;
-				await this.plugin.saveSettings();
+				await this.onQueryChange()
 				onChange()
 			}).setDisabled(idx === 0))
 			.addButton(btn => btn.setIcon('move-down').onClick(async _ => {
 				let swap = strategy.options[idx]!;
 				strategy.options[idx] = strategy.options[idx + 1]!;
 				strategy.options[idx + 1] = swap;
-				await this.plugin.saveSettings();
+				await this.onQueryChange()
 				onChange()
 			}).setDisabled(idx === strategy.options.length - 1))
 			.addButton(btn => btn.setIcon('trash').onClick(async _ => {
 				strategy.options.splice(idx, 1);
 				// "Tail recursion (ish)" should be fine?
-				await this.plugin.saveSettings();
+				await this.onQueryChange()
 				void setting.clear()
 				onChange()
 			}));
@@ -397,7 +448,7 @@ export class PropertySettingsModal extends Modal {
 			.setDesc('JavaScript code: function(app) { ... }')
 			.addTextArea(text => text.setValue(strategy.code).onChange(async value => {
 				strategy.code = value;
-				await this.plugin.saveSettings();
+				await this.onQueryChange()
 			}))
 			.addButton(btn =>
 				btn.setIcon('square-chevron-right')
@@ -423,9 +474,10 @@ export class PropertySettingsModal extends Modal {
 			.setName('Or')
 			.setDesc('Disjunctions')
 			.addButton(btn =>
-				btn.setIcon('plus').onClick(_ => {
+				btn.setIcon('plus').onClick(async _ => {
 					strategy.strategies.push(defaultStrategy('Tag') as TagStrategy);
 					this.renderStrategyList(strategyListElement, strategy, depth, {or: true});
+					await this.onQueryChange()
 				})
 			)
 		this.renderStrategyList(strategyListElement, strategy, depth, {or: true});
@@ -439,9 +491,10 @@ export class PropertySettingsModal extends Modal {
 			.setName('And')
 			.setDesc('Conjunctions')
 			.addButton(btn =>
-				btn.setIcon('plus').onClick(_ => {
+				btn.setIcon('plus').onClick(async _ => {
 					strategy.strategies.push(defaultStrategy('Tag') as TagStrategy);
 					this.renderStrategyList(strategyListElement, strategy, depth, {and: true});
+					await this.onQueryChange()
 				})
 			)
 		this.renderStrategyList(strategyListElement, strategy, depth, {and: true});
@@ -463,18 +516,19 @@ export class PropertySettingsModal extends Modal {
 					let swap = strategy.strategies[i]!;
 					strategy.strategies[i] = strategy.strategies[i - 1]!;
 					strategy.strategies[i - 1] = swap;
-					await this.plugin.saveSettings();
+					await this.onQueryChange()
 					this.renderStrategyList(element, strategy, depth, options);
 				}).setDisabled(i === 0))
 				.addButton(btn => btn.setIcon('move-down').onClick(async _ => {
 					let swap = strategy.strategies[i]!;
 					strategy.strategies[i] = strategy.strategies[i + 1]!;
 					strategy.strategies[i + 1] = swap;
-					await this.plugin.saveSettings();
+					await this.onQueryChange()
 					this.renderStrategyList(element, strategy, depth, options);
 				}).setDisabled(i === strategy.strategies.length - 1))
-				.addButton(btn => btn.setIcon('trash').onClick(_ => {
+				.addButton(btn => btn.setIcon('trash').onClick(async _ => {
 					strategy.strategies.splice(i, 1);
+					await this.onQueryChange()
 					// "Tail recursion (ish)" should be fine?
 					this.renderStrategyList(element, strategy, depth, options);
 				}))
@@ -540,33 +594,21 @@ export class PropertySettingsModal extends Modal {
 						})
 				})
 			).addSetting(setting => void setting
-				.setName("Default suggestion handling")
-				.setDesc("Append, prepend or replace the original Obsidian suggestions.")
-				.addDropdown(dropdown => {
-					dropdown
-						.addOption('default','Default')
-						.addOption('append', 'Append')
-						.addOption('prepend', 'Prepend')
-						.addOption('replace', 'Replace')
-						.setValue(this.defaultSuggestionHandling)
-						.onChange(async value => {
-							this.defaultSuggestionHandling = value as DefaultSuggestionHandling | 'default';
-							await this.plugin.saveSettings();
-						})
-				})
+			.setName("Default suggestion handling")
+			.setDesc("Append, prepend or replace the original Obsidian suggestions.")
+			.addDropdown(dropdown => {
+				dropdown
+					.addOption('default', 'Default')
+					.addOption('append', 'Append')
+					.addOption('prepend', 'Prepend')
+					.addOption('replace', 'Replace')
+					.setValue(this.defaultSuggestionHandling)
+					.onChange(async value => {
+						this.defaultSuggestionHandling = value as DefaultSuggestionHandling | 'default';
+						await this.plugin.saveSettings();
+					})
+			})
 		)
-
-	}
-
-	onClose() {
-		super.onClose();
-		if (this.strategy) {
-			void this.plugin.strategyCacheSet(this.property, this.strategy)
-				.then(() => this.plugin.applyLayout(this.propertyEl))
-		} else {
-			this.plugin.applyLayout(this.propertyEl);
-		}
-
 
 	}
 }

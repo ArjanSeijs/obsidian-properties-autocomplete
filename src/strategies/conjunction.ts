@@ -1,14 +1,9 @@
 import type AutoPropPlugin from "../main";
-import {
-	SuggestionStrategy,
-	evaluateStrategy,
-	matchStrategies,
-	matchStrategy
-} from "./index";
+import {evaluateStrategy, isProvider, matchStrategies, matchStrategy, SuggestionStrategy} from "./index";
 import {asyncFilter, intersection, partition} from "../util/listutil";
 
 import {SuggesterContext} from "../types";
-import {StrategySuggestionResult, eqSuggestionResult} from "./suggestion";
+import {eqSuggestionResult, StrategySuggestionResult} from "./suggestion";
 
 /**
  * And / Intersection
@@ -36,17 +31,3 @@ export async function match(plugin: AutoPropPlugin, suggestion: StrategySuggesti
 	return true;
 }
 
-function isProvider(value: SuggestionStrategy): boolean {
-	switch (value.type) {
-		case "List":
-		case "Tag":
-		case "Folder":
-		case "JS":
-		case "Disjunction":
-			return true;
-		case "Conjunction":
-			return value.strategies.some(strategy => isProvider(strategy))
-		case "Negation":
-			return value.strategy.type === "Tag" || value.strategy.type === "Folder";
-	}
-}
