@@ -30,6 +30,12 @@ export type SuggestionStrategy =
 	| NegationStrategy
 export type SuggestionStrategyType = SuggestionStrategy['type']
 
+/**
+ * Evaluate to strategy to get a list of suggestions.
+ * @param plugin
+ * @param strategy
+ * @param context
+ */
 export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: SuggestionStrategy, context?: SuggesterContext): Promise<StrategySuggestionResults> {
 	switch (strategy.type) {
 		case "List":
@@ -50,6 +56,13 @@ export async function evaluateStrategy(plugin: AutoPropPlugin, strategy: Suggest
 	}
 }
 
+/**
+ * Check whether a suggestions matches a list of strategies. (And / Intersection)
+ * @param plugin
+ * @param suggestion
+ * @param strategies
+ * @param context
+ */
 export async function matchStrategies(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategies: SuggestionStrategy[], context?: SuggesterContext) {
 	for (const strategy of strategies) {
 		if (!await matchStrategy(plugin, suggestion, strategy, context)) {
@@ -59,6 +72,13 @@ export async function matchStrategies(plugin: AutoPropPlugin, suggestion: Strate
 	return true;
 }
 
+/**
+ * Check whether a suggestion matches a strategy
+ * @param plugin
+ * @param suggestion
+ * @param strategy
+ * @param context
+ */
 export async function matchStrategy(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: SuggestionStrategy, context?: SuggesterContext): Promise<boolean> {
 	switch (strategy.type) {
 		case "List":
@@ -78,6 +98,13 @@ export async function matchStrategy(plugin: AutoPropPlugin, suggestion: Strategy
 	}
 }
 
+/**
+ * Evaluate a strategy and then fuzzySearch those suggestions to get the obsidian SuggestionResults.
+ * @param plugin
+ * @param strategy
+ * @param query
+ * @param context
+ */
 export async function queryStrategy(plugin: AutoPropPlugin, strategy: SuggestionStrategy, query: string, context: SuggesterContext) {
 	if (!isProvider(strategy)) return [];
 	let results = await evaluateStrategy(plugin, strategy, context);
@@ -86,7 +113,13 @@ export async function queryStrategy(plugin: AutoPropPlugin, strategy: Suggestion
 		.filter(value => value != null)
 }
 
-
+/**
+ * Convert Strategy Suggestion to obsidian SuggestionResult using fuzzy-search.
+ * @param app
+ * @param suggestion
+ * @param fuzzySearcher
+ * @param context
+ */
 function fuzzySearchSuggestions(app: App, suggestion: StrategySuggestionResult, fuzzySearcher: FuzzySearcher, context: SuggesterContext): SuggestionResult[] {
 	if (typeof suggestion === "string") {
 		let text = suggestionToString(app, suggestion, context);

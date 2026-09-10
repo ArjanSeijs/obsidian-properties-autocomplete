@@ -1,9 +1,9 @@
 {
-	"id": "autocomplete-properties",
-	"name": "Autocomplete Properties",
-	"version": "0.0.1",
+	"id": "property-suggester-enhanced",
+	"name": "Property Suggester Enhanced",
+	"version": "1.0.0",
 	"minAppVersion": "1.13.7",
-	"description": "Enhance the obsidian property suggestions through the use of custom rules.",
+	"description": "Enhance the obsidian property suggestions through the use of custom rules. With some additional styling options.",
 	"author": "EternalSoap",
 	"authorUrl": "eternalsoap.nl",
 	"isDesktopOnly": false

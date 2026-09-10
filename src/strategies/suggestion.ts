@@ -2,6 +2,10 @@ import {App, TFile} from "obsidian";
 import type {ListItem} from "./list";
 import {SuggesterContext} from "../types";
 
+/**
+ * StrategySuggestion result is the evaluation of a strategy.
+ * Not te be confused with SuggestionResult which is the internal obsidian representation of suggestions.
+ */
 export type StrategySuggestionResult = TFile | string | ListItem;
 export type StrategySuggestionResults = StrategySuggestionResult[]
 
@@ -19,6 +23,12 @@ export function eqSuggestionResult(a: StrategySuggestionResult, b: StrategySugge
 	return false;
 }
 
+/**
+ * Check if a string option is equal to the string representation of a StrategySuggestionResult
+ * @param app
+ * @param option
+ * @param suggestion
+ */
 export function validateSuggestionResult(app: App, option: string, suggestion: StrategySuggestionResult) {
 	if (suggestion instanceof TFile) {
 		if (!option.startsWith("[[") || !option.endsWith("]]")) return false;
@@ -46,6 +56,13 @@ export function isSuggestionResult(value: unknown): value is StrategySuggestionR
 	return value instanceof TFile;
 }
 
+/**
+ * String representation of strategy suggestion result.
+ * @param app
+ * @param suggestion
+ * @param context
+ * @param alias
+ */
 export function suggestionToString(app: App, suggestion: StrategySuggestionResult, context?: SuggesterContext, alias?: string) {
 	if (typeof suggestion === "string") {
 		return suggestion;

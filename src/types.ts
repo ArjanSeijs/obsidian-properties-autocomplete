@@ -9,9 +9,13 @@ export type SuggestionResult<T extends object = object> = {
 	customData?: T
 };
 export type uninstaller = () => void
-export type SuggesterContext = { key: string, sourcePath: string };
 
-export type StrategyCache = {[key : string] : StrategySuggestionResults}
+export type StrategyCache = { [key: string]: StrategySuggestionResults }
+
+/**
+ * Internal api for property suggester.
+ */
+export type SuggesterContext = { key: string, sourcePath: string };
 
 /**
  * PopoverSuggester + AbstractInputSuggester + internal api for property suggester.

@@ -1,4 +1,4 @@
-import {App, getAllTags, MarkdownView, normalizePath, TAbstractFile, TFile, Vault} from "obsidian";
+import {App, getAllTags, normalizePath, TAbstractFile, TFile, Vault} from "obsidian";
 
 
 export function getTags(app: App, file: TFile) {
@@ -88,18 +88,4 @@ export function pathResolve(...paths: string[]) {
 		}
 	}
 	return normalizePath(result.join("/"));
-}
-
-export function getFileFromPropertyEl(app : App, el : HTMLElement) : TFile | null {
-	const leafEl = el.closest<HTMLElement>('.workspace-leaf');
-	if (!leafEl) return null;
-
-	let file : TFile | null  = null;
-	app.workspace.iterateAllLeaves(leaf => {
-		if (leaf.view instanceof MarkdownView && leaf.view.containerEl === leafEl) {
-			file = leaf.view?.file ?? null;
-		}
-	});
-
-	return file;
 }
