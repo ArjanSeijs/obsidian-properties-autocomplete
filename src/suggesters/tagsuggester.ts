@@ -11,7 +11,7 @@ export class TagSuggester extends AbstractInputSuggest<string> {
 			let score = searcher(tag)?.score
 			return {tag, score}
 		}).filter(value => value.score != undefined)
-			.sort((a, b) => a.score! - a.score!)
+			.sort((a, b) => b.score! - a.score!)
 			.map(value => value.tag)
 	}
 

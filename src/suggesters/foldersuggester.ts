@@ -8,7 +8,7 @@ export class FolderSuggester extends AbstractInputSuggest<TFolder> {
 			let score = searcher(folder.path)?.score
 			return {folder, score}
 		}).filter(value => value.score != undefined)
-			.sort((a, b) => a.score! - a.score!)
+			.sort((a, b) => b.score! - a.score!)
 			.map(value => value.folder)
 	}
 

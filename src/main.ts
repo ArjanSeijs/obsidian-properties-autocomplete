@@ -1,4 +1,5 @@
 import {
+	getIconIds,
 	Plugin, setIcon, TFile,
 } from 'obsidian';
 import {
@@ -115,7 +116,7 @@ export default class AutoPropPlugin extends Plugin {
 
 		const iconEl = propEl.querySelector<HTMLElement>(".metadata-property-icon");
 		const icon = this.settings.properties[key].icon;
-		if (icon && iconEl) setIcon(iconEl, icon)
+		if (icon && iconEl && getIconIds().contains(icon)) setIcon(iconEl, icon)
 	}
 
 	validateValues(propEl: HTMLElement) {

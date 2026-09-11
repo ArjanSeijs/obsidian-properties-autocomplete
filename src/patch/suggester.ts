@@ -1,8 +1,8 @@
 import {around, dedupe} from "monkey-around";
 import AutoPropPlugin from "../main";
-import {AbstractInputSuggest, Notice} from "obsidian";
+import {AbstractInputSuggest} from "obsidian";
 import {queryStrategy} from "../strategies";
-import {ObsidianPropertySuggester, SuggestionResult, uninstaller} from "../types";
+import {ErrorWithNotice, ObsidianPropertySuggester, SuggestionResult, uninstaller} from "../types";
 
 const MONKEY_KEY = "eternal.prop";
 
@@ -105,7 +105,7 @@ async function getSuggestionsPatch(instance: ObsidianPropertySuggester<Suggestio
 	try {
 		additional = await queryStrategy(plugin, strategy, query, instance.context);
 	} catch (error) {
-		if (error instanceof Error) new Notice(error.message)
+		if (error instanceof ErrorWithNotice) error.showNotice();
 		console.error(error);
 		return [];
 	}

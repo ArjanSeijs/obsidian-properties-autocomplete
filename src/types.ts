@@ -1,4 +1,4 @@
-import type {App, HistoryHandler, ISuggestOwner, prepareFuzzySearch, Scope} from "obsidian";
+import {App, HistoryHandler, ISuggestOwner, Notice, prepareFuzzySearch, Scope} from "obsidian";
 import {StrategySuggestionResults} from "./strategies/suggestion";
 
 export type SuggestionResult<T extends object = object> = {
@@ -12,6 +12,7 @@ export type uninstaller = () => void
 
 export type StrategyCache = { [key: string]: StrategySuggestionResults }
 
+export type EvalContext = {property : string, suggester? : SuggesterContext}
 /**
  * Internal api for property suggester.
  */
@@ -89,3 +90,17 @@ export interface ObsidianPropertySuggester<T> extends ISuggestOwner<T>, HistoryH
 }
 
 export type FuzzySearcher = ReturnType<typeof prepareFuzzySearch>
+
+/**
+ * Utility Error class with translated notice.
+ */
+export class ErrorWithNotice extends Error {
+	constructor(message: string, private notice: string) {
+		super(message);
+	}
+
+	public showNotice() {
+		new Notice(this.notice)
+	}
+
+}

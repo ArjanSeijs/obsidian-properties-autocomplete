@@ -2,6 +2,7 @@ import {Menu} from "obsidian";
 import {around} from "monkey-around";
 import AutoPropPlugin from "../main";
 import {PropertySettingsModal} from "../settings";
+import {text} from "../i18n";
 
 /**
  * Inject the property settings modal into the right click property menu.
@@ -18,7 +19,7 @@ export function patchPropertyMenu(plugin: AutoPropPlugin) {
 				if (propertyContainerEl) {
 					instance.addItem(item =>
 						item.setIcon('settings')
-							.setTitle('Autocomplete settings')
+							.setTitle(text('querybuilder.title'))
 							.onClick(() => {
 								const propertyKey = propertyContainerEl.getAttribute("data-property-key");
 								if (propertyKey) new PropertySettingsModal(plugin, propertyKey, propertyContainerEl).open();

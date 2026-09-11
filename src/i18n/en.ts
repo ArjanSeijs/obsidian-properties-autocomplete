@@ -1,0 +1,68 @@
+export default {
+	'querybuilder.title': 'Query Builder',
+
+
+	'error.strategy.negation.list': 'Cannot query negation of list $0',
+	'error.strategy.negation.code': 'Cannot query negation of code $0',
+	'error.strategy.negation.disjunction': 'Cannot query negation of disjunction $0',
+	'error.strategy.negation.conjunction': 'Cannot query negation of conjunction $0',
+	'error.code.timeout': 'Timeout $0',
+	'error.code.array': 'Results are not an array but was: $0',
+	'error.code.valid': 'Results are note an array of suggestions.',
+	'error.code.disabled' : 'Enable javascript in the plugin settings.',
+	'error.code.fail' : 'Code execution failed for: $0',
+
+
+	'settings.definitions.display.title': 'Display',
+	'settings.definitions.display.icon.name': 'Icons',
+	'settings.definitions.display.icon.description': 'Customize property icons',
+	'settings.definitions.display.background.name': 'Background',
+	'settings.definitions.display.background.description': 'Customize property background',
+	'settings.definitions.display.validation.name': 'Validate properties',
+	'settings.definitions.display.validation.description': 'Indicate values that do not match queries',
+	'settings.definitions.code.title': 'Code execution',
+	'settings.definitions.code.enabled.name': 'Enabled',
+	'settings.definitions.code.enabled.description': 'Enable execution of custom user scripts',
+	'settings.definitions.code.timeout.name': 'Timeout',
+	'settings.definitions.code.timeout.description': 'Time in ms before scripts timeouts',
+
+
+	'settings.modal.title': 'Settings for property: $0',
+	'settings.modal.invalidquery': 'Query could not be evaluated.',
+	'settings.modal.strategyselector.title': 'Select strategy',
+	'settings.modal.strategyselector.type': 'Type',
+	'settings.modal.strategyselector.tag': 'Tag',
+	'settings.modal.strategyselector.folder': 'Folder',
+	'settings.modal.strategyselector.list': 'List',
+	'settings.modal.strategyselector.or': 'Or',
+	'settings.modal.strategyselector.and': 'And',
+	'settings.modal.strategyselector.not': 'Not',
+	'settings.modal.tag.description': 'The tag the files should have',
+	'settings.modal.folder.description': '',
+	'settings.modal.list.description': '',
+	'settings.modal.or.description': 'Disjunction',
+	'settings.modal.and.description': 'Conjunction',
+	'settings.modal.not.description': 'Negation',
+	'settings.modal.tag.match.name': 'Exact match',
+	'settings.modal.tag.match.description': 'Should it be an exact match or include subtags',
+	'settings.modal.folder.subfolders.name': 'Subfolders',
+	'settings.modal.folder.subfolders.description': 'Include files in subfolders',
+	'settings.modal.code.success': 'Code completed successfully',
+	'settings.modal.code.fail': 'Code did not completed successfully',
+	'settings.modal.strategylist.heading': 'Substrategy $0',
+
+	'settings.modal.display.heading': 'Frontmatter Appearance',
+	'settings.modal.display.icons.name': 'Icons',
+	'settings.modal.display.icon.description': 'Enable/disable icons in plugin settings',
+	'settings.modal.display.validation.name': 'Validate',
+	'settings.modal.display.validation.description': 'Validate frontmatter values',
+
+	'settings.modal.handling.name': 'Default suggestions',
+	'settings.modal.handling.description': 'Should the suggestions be append, prepended or replace the original suggestions.',
+	'settings.modal.handling.default': 'Default',
+	'settings.modal.handling.append': 'Append',
+	'settings.modal.handling.prepend': 'Prepend',
+	'settings.modal.handling.replace': 'Replace',
+
+
+} as const;

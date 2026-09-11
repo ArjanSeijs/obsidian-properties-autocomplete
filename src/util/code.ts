@@ -1,13 +1,15 @@
 import AutoPropPlugin from "../main";
 import {App, CachedMetadata, Notice, TFile} from "obsidian";
 import {getFrontmatter} from "./fileutil";
+import {ErrorWithNotice} from "../types";
+import {text} from "../i18n";
 
 export type Validator<T> = (value: unknown) => value is T;
 
 export type ExecContext = {
 	file: TFile | null
 	frontmatter: object | null
-	metadata : CachedMetadata | null
+	metadata: CachedMetadata | null
 }
 
 /**
@@ -16,7 +18,7 @@ export type ExecContext = {
  */
 export function timeout(ms: number): Promise<never> {
 	return new Promise((_, reject) =>
-		window.setTimeout(() => reject(new Error(`Timeout (${ms} ms)`)), ms));
+		window.setTimeout(() => reject(new ErrorWithNotice(`Timeout (${ms} ms)`, text('error.code.timeout', ms))), ms));
 }
 
 /**
@@ -29,7 +31,7 @@ export function timeout(ms: number): Promise<never> {
  */
 export async function evalAndValidate<T>(plugin: AutoPropPlugin, code: string, validator: Validator<T>, sourcePath?: string, ms = plugin.settings.jsTimeout): Promise<T[] | null> {
 	if (!plugin.settings.allowJs) {
-		new Notice('Enable JavaScript support in settings.');
+		new Notice(text('error.code.disabled'));
 		return null;
 	}
 	try {
@@ -43,20 +45,19 @@ export async function evalAndValidate<T>(plugin: AutoPropPlugin, code: string, v
 		let result = await Promise.race([func(plugin.app, ectx), timeout(ms)]);
 
 		if (!Array.isArray(result)) {
-			new Notice("Result is not an array but was: " + typeof result);
+			new Notice(text('error.code.array', typeof result));
 			console.warn("Result is not an array but was: ", result);
 			return null;
 		}
 
 		if (!result.every(validator)) {
-			new Notice("Result validation failed")
+			new Notice(text('error.code.valid'))
 			console.warn("Result validation failed: ", result);
 			return null;
 		}
 
 		return result
 	} catch (e) {
-		new Notice("Error occurred executing code")
 		console.error(e);
 		return null;
 	}

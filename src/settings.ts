@@ -20,6 +20,7 @@ import {NegationStrategy} from "./strategies/negation";
 import {isProvider, SuggestionStrategy, SuggestionStrategyType} from "./strategies";
 import {IconSuggester} from "./suggesters/iconsuggester";
 import {isSuggestionResult} from "./strategies/suggestion";
+import {text} from "./i18n";
 
 type DefaultSuggestionHandling = 'append' | 'prepend' | 'replace';
 type PropertySetting = {
@@ -64,37 +65,37 @@ export class PropertySettingsTab extends PluginSettingTab {
 		return [
 			{
 				type: "group",
-				heading: "Custom Rendering",
+				heading: text('settings.definitions.display.title'),
 				items: [
 					{
-						name: 'Enable Icons',
-						desc: 'Custom property icons.',
+						name: text('settings.definitions.display.icon.name'),
+						desc: text('settings.definitions.display.icon.description'),
 						control: {type: 'toggle', key: 'enableIcons'}
 					},
 					{
-						name: 'Enable Backgrounds',
-						desc: 'Custom property backgrounds.',
+						name: text('settings.definitions.display.background.name'),
+						desc: text('settings.definitions.display.background.description'),
 						control: {type: 'toggle', key: 'enableBackgrounds',}
 					},
 					{
-						name: 'Enable Property Validation',
-						desc: 'Property verification.',
+						name: text('settings.definitions.display.validation.name'),
+						desc: text('settings.definitions.display.validation.description'),
 						control: {type: 'toggle', key: 'enableValidation',}
 					}
 				]
 			},
 			{
 				type: "group",
-				heading: "Code Execution",
+				heading: text('settings.definitions.code.title'),
 				items: [
 					{
-						name: 'Allow Javascript',
-						desc: 'Enable execution of custom user scripts for suggestions',
+						name: text('settings.definitions.code.enabled.name'),
+						desc: text('settings.definitions.code.enabled.description'),
 						control: {type: 'toggle', key: 'allowJs'}
 					},
 					{
-						name: 'Javascript timeout',
-						desc: 'Time before custom user script timeouts in ms.',
+						name: text('settings.definitions.code.timeout.name'),
+						desc: text('settings.definitions.code.timeout.description'),
 						control: {type: 'number', key: 'jsTimeout'}
 					}
 				]
@@ -117,7 +118,7 @@ export class PropertySettingsModal extends Modal {
 
 	constructor(private plugin: AutoPropPlugin, private property: string, private propertyEl: HTMLElement) {
 		super(plugin.app);
-		this.setTitle("Property settings for " + this.property);
+		this.setTitle(text('settings.modal.title', this.property));
 		this.render();
 		this.containerEl.addClass('property-setting-modal')
 	}
@@ -200,7 +201,7 @@ export class PropertySettingsModal extends Modal {
 			this.warningBtn.extraSettingsEl.addClass('query-valid')
 			return true;
 		} else {
-			this.warningBtn.setIcon('shield-x').setTooltip('Invalid query. Query has no method of providing suggestions.')
+			this.warningBtn.setIcon('shield-x').setTooltip(text('settings.modal.invalidquery'))
 			this.warningBtn.extraSettingsEl.addClass('query-invalid')
 			return false;
 		}
@@ -229,7 +230,7 @@ export class PropertySettingsModal extends Modal {
 
 	renderTopStrategySelector(contentEl: HTMLElement, setValue: (cb: SuggestionStrategy | undefined) => void, getValue: () => SuggestionStrategy | undefined, depth: number, options: RenderStrategyArgs = {}) {
 
-		let group = new SettingGroup(contentEl).setHeading('Strategy Settings').addExtraButton(btn => {
+		let group = new SettingGroup(contentEl).setHeading(text('settings.modal.strategyselector.title')).addExtraButton(btn => {
 			this.warningBtn = btn;
 			this.validateQuery();
 		})
@@ -247,18 +248,17 @@ export class PropertySettingsModal extends Modal {
 		group
 			.addSetting(setting => {
 				setting
-					.setName('Type')
-					.setDesc('Select the options for ' + this.property)
+					.setName(text('settings.modal.strategyselector.type'))
 					.addDropdown(dropdown => {
 						dropdown
 							.addOption('', '')
-							.addOption('Tag', 'Tag')
-							.addOption('Folder', 'Folder')
-							.addOption('List', 'List')
+							.addOption('Tag', text('settings.modal.strategyselector.tag'))
+							.addOption('Folder', text('settings.modal.strategyselector.folder'))
+							.addOption('List', text('settings.modal.strategyselector.list'))
 						if (!options.js) dropdown.addOption('JS', 'JS')
-						if (!options.or) dropdown.addOption('Disjunction', 'Or')
-						if (!options.and) dropdown.addOption('Conjunction', 'And')
-						if (!options.negation) dropdown.addOption('Negation', 'Not')
+						if (!options.or) dropdown.addOption('Disjunction', text('settings.modal.strategyselector.or'))
+						if (!options.and) dropdown.addOption('Conjunction', text('settings.modal.strategyselector.and'))
+						if (!options.negation) dropdown.addOption('Negation', text('settings.modal.strategyselector.not'))
 						dropdown
 							.setValue(getValue()?.type ?? '')
 							.onChange(async value => {
@@ -301,8 +301,8 @@ export class PropertySettingsModal extends Modal {
 
 	private renderTagStrategy(contentEl: HTMLElement, strategy: TagStrategy) {
 		new Setting(contentEl)
-			.setName('Tag')
-			.setDesc('Select the tag the file should match')
+			.setName(text('settings.modal.strategyselector.tag'))
+			.setDesc(text('settings.modal.tag.description'))
 			.addText(text => {
 				text.setValue(strategy?.tag ?? '')
 					.onChange(async value => {
@@ -319,8 +319,8 @@ export class PropertySettingsModal extends Modal {
 
 			})
 		new Setting(contentEl)
-			.setName('Exact match')
-			.setDesc('Should tag match exactly or include subtags')
+			.setName(text('settings.modal.tag.match.name'))
+			.setDesc(text('settings.modal.tag.match.description'))
 			.addToggle(toggle => toggle.setValue(strategy.exact)
 				.onChange(async value => {
 					strategy.exact = value;
@@ -331,8 +331,8 @@ export class PropertySettingsModal extends Modal {
 
 	private renderFolderStrategy(contentEl: HTMLElement, strategy: FolderStrategy) {
 		new Setting(contentEl)
-			.setName('Folder')
-			.setDesc('Select the folder should match')
+			.setName(text('settings.modal.strategyselector.folder'))
+			.setDesc(text('settings.modal.folder.description'))
 			.addText(text => {
 				text.setValue(strategy?.folder ?? '')
 					.onChange(async value => {
@@ -348,7 +348,8 @@ export class PropertySettingsModal extends Modal {
 				});
 			})
 		new Setting(contentEl)
-			.setName('Include subfolders')
+			.setName(text('settings.modal.folder.subfolders.name'))
+			.setDesc(text('settings.modal.folder.subfolders.description'))
 			.addToggle(toggle => toggle.setValue(strategy.includeSubFolders)
 				.onChange(async value => {
 					strategy.includeSubFolders = value;
@@ -371,7 +372,7 @@ export class PropertySettingsModal extends Modal {
 			}
 		}
 		let settingGroup = new SettingGroup(contentEl)
-			.setHeading('List')
+			.setHeading(text('settings.modal.strategyselector.list'))
 			.addExtraButton(btn =>
 				btn.setIcon('plus').onClick(async () => {
 					const option = {label: '', value: ''};
@@ -460,8 +461,10 @@ export class PropertySettingsModal extends Modal {
 		btn.setIcon('circle-dashed')
 		btn.setDisabled(true);
 		let result = await evalAndValidate(this.plugin, strategy.code, (value) => isSuggestionResult(value))
-		if (result != null) {
-			new Notice('Code completed successfully.');
+		if (result == null) {
+			new Notice(text('settings.modal.code.fail'))
+		} else {
+			new Notice(text('settings.modal.code.success'));
 		}
 		btn.setDisabled(false);
 		btn.setIcon('square-chevron-right')
@@ -471,8 +474,8 @@ export class PropertySettingsModal extends Modal {
 		let setting = new Setting(element);
 		let strategyListElement = element.createDiv();
 		setting
-			.setName('Or')
-			.setDesc('Disjunctions')
+			.setName(text('settings.modal.strategyselector.or'))
+			.setDesc(text('settings.modal.or.description'))
 			.addButton(btn =>
 				btn.setIcon('plus').onClick(async _ => {
 					strategy.strategies.push(defaultStrategy('Tag') as TagStrategy);
@@ -488,8 +491,8 @@ export class PropertySettingsModal extends Modal {
 		let setting = new Setting(element);
 		let strategyListElement = element.createDiv();
 		setting
-			.setName('And')
-			.setDesc('Conjunctions')
+			.setName(text('settings.modal.strategyselector.and'))
+			.setDesc(text('settings.modal.and.description'))
 			.addButton(btn =>
 				btn.setIcon('plus').onClick(async _ => {
 					strategy.strategies.push(defaultStrategy('Tag') as TagStrategy);
@@ -510,7 +513,7 @@ export class PropertySettingsModal extends Modal {
 		element.empty()
 		for (let i = 0; i < strategy.strategies.length; i++) {
 			new Setting(element)
-				.setName(`SubStrategy ${i}`)
+				.setName(text('settings.modal.strategylist.heading', i))
 				.setHeading()
 				.addButton(btn => btn.setIcon('move-up').onClick(async _ => {
 					let swap = strategy.strategies[i]!;
@@ -543,7 +546,8 @@ export class PropertySettingsModal extends Modal {
 
 	private renderNegation(contentEl: HTMLElement, strategy: NegationStrategy, depth: number) {
 		new Setting(contentEl)
-			.setName('Negation')
+			.setName(text('settings.modal.strategyselector.not'))
+			.setDesc(text('settings.modal.not.description'))
 			.setHeading();
 
 		const element = contentEl.createDiv();
@@ -556,10 +560,10 @@ export class PropertySettingsModal extends Modal {
 	private renderAppearanceSelection(contentEl: HTMLElement) {
 		let button: DisplayValueComponent | undefined;
 		new SettingGroup(contentEl)
-			.setHeading("Frontmatter Appearance")
+			.setHeading(text('settings.modal.display.heading'))
 			.addSetting(setting => void setting
-				.setName('Icons')
-				.setDesc('Enable/disable icons in plugin settings')
+				.setName(text('settings.definitions.display.icon.name'))
+				.setDesc(text('settings.definitions.display.icon.description'))
 				.addDisplayValue(btn => {
 						if (this.icon) setIcon(btn.valueEl, this.icon)
 						button = btn;
@@ -583,8 +587,8 @@ export class PropertySettingsModal extends Modal {
 
 				}))
 			.addSetting(setting => void setting
-				.setName("Validation")
-				.setDesc('Whether to validate property values')
+				.setName(text('settings.modal.display.validation.name'))
+				.setDesc(text('settings.modal.display.validation.description'))
 				.addToggle(toggle => {
 					toggle.setValue(this.validate ?? false)
 						.onChange(async value => {
@@ -594,14 +598,14 @@ export class PropertySettingsModal extends Modal {
 						})
 				})
 			).addSetting(setting => void setting
-			.setName("Default suggestion handling")
-			.setDesc("Append, prepend or replace the original Obsidian suggestions.")
+			.setName(text('settings.modal.handling.name'))
+			.setDesc(text('settings.modal.handling.description'))
 			.addDropdown(dropdown => {
 				dropdown
-					.addOption('default', 'Default')
-					.addOption('append', 'Append')
-					.addOption('prepend', 'Prepend')
-					.addOption('replace', 'Replace')
+					.addOption('default', text('settings.modal.handling.default'))
+					.addOption('append', text('settings.modal.handling.append'))
+					.addOption('prepend', text('settings.modal.handling.prepend'))
+					.addOption('replace', text('settings.modal.handling.replace'))
 					.setValue(this.defaultSuggestionHandling)
 					.onChange(async value => {
 						this.defaultSuggestionHandling = value as DefaultSuggestionHandling | 'default';

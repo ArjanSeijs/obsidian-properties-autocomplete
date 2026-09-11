@@ -2,8 +2,9 @@ import AutoPropPlugin from "../main";
 import {SuggestionStrategy, matchStrategy} from "./index";
 import {getMarkdownFilesWithTag, pathResolve} from "../util/fileutil";
 
-import {SuggesterContext} from "../types";
+import {ErrorWithNotice, SuggesterContext} from "../types";
 import {StrategySuggestionResult} from "./suggestion";
+import {text} from "../i18n";
 
 /**
  * Negation
@@ -19,7 +20,7 @@ export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, con
 	let subStrategy = strategy.strategy;
 	switch (subStrategy.type) {
 		case "List":
-			throw new Error("Cannot query negation of list " + keyMessage)
+			throw new ErrorWithNotice("Cannot query negation of list " + keyMessage, text('error.strategy.negation.list', keyMessage))
 		case "Tag":
 			return [...getMarkdownFilesWithTag(plugin.app, subStrategy.tag, subStrategy.exact, true)]
 		case "Folder": {
@@ -27,11 +28,11 @@ export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, con
 			return plugin.app.vault.getMarkdownFiles().filter(value => !value.path.includes(folder))
 		}
 		case "JS":
-			throw new Error("Cannot query negation of code list" + keyMessage)
+			throw new ErrorWithNotice("Cannot query negation of code list" + keyMessage, text('error.strategy.negation.code', keyMessage))
 		case "Disjunction":
-			throw new Error("Cannot query negation of union" + keyMessage)
+			throw new ErrorWithNotice("Cannot query negation of union" + keyMessage, text('error.strategy.negation.disjunction', keyMessage))
 		case "Conjunction":
-			throw new Error("Cannot query negation of intersection" + keyMessage)
+			throw new ErrorWithNotice("Cannot query negation of intersection" + keyMessage, text('error.strategy.negation.conjunction', keyMessage))
 	}
 }
 
