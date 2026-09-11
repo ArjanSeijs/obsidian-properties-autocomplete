@@ -53,8 +53,8 @@ export default class AutoPropPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	async strategyCacheSet(key: string, strategy: SuggestionStrategy) {
-		this.strategyCache[key] = await evaluateStrategy(this, strategy)
+	async strategyCacheSet(property: string, strategy: SuggestionStrategy) {
+		this.strategyCache[property] = await evaluateStrategy(this, strategy, {property})
 	}
 
 	applyLayoutChanges() {

@@ -2,7 +2,7 @@ import AutoPropPlugin from "../main";
 import {SuggestionStrategy, matchStrategy} from "./index";
 import {getMarkdownFilesWithTag, pathResolve} from "../util/fileutil";
 
-import {ErrorWithNotice, SuggesterContext} from "../types";
+import {ErrorWithNotice, EvalContext} from "../types";
 import {StrategySuggestionResult} from "./suggestion";
 import {text} from "../i18n";
 
@@ -15,27 +15,26 @@ export interface NegationStrategy {
 }
 
 
-export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, context?: SuggesterContext) {
-	let keyMessage = context ? `(${context.key}) ` : '';
+export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, ctx: EvalContext) {
 	let subStrategy = strategy.strategy;
 	switch (subStrategy.type) {
 		case "List":
-			throw new ErrorWithNotice("Cannot query negation of list " + keyMessage, text('error.strategy.negation.list', keyMessage))
+			throw new ErrorWithNotice("Cannot query negation of list " + ctx.property, text('error.strategy.negation.list', ctx.property))
 		case "Tag":
 			return [...getMarkdownFilesWithTag(plugin.app, subStrategy.tag, subStrategy.exact, true)]
 		case "Folder": {
-			const folder = context ? pathResolve(context.sourcePath, "..", subStrategy.folder) : pathResolve(subStrategy.folder);
+			const folder = ctx.suggester ? pathResolve(ctx.suggester.sourcePath, "..", subStrategy.folder) : pathResolve(subStrategy.folder);
 			return plugin.app.vault.getMarkdownFiles().filter(value => !value.path.includes(folder))
 		}
 		case "JS":
-			throw new ErrorWithNotice("Cannot query negation of code list" + keyMessage, text('error.strategy.negation.code', keyMessage))
+			throw new ErrorWithNotice("Cannot query negation of code list" + ctx.property, text('error.strategy.negation.code', ctx.property))
 		case "Disjunction":
-			throw new ErrorWithNotice("Cannot query negation of union" + keyMessage, text('error.strategy.negation.disjunction', keyMessage))
+			throw new ErrorWithNotice("Cannot query negation of union" + ctx.property, text('error.strategy.negation.disjunction', ctx.property))
 		case "Conjunction":
-			throw new ErrorWithNotice("Cannot query negation of intersection" + keyMessage, text('error.strategy.negation.conjunction', keyMessage))
+			throw new ErrorWithNotice("Cannot query negation of intersection" + ctx.property, text('error.strategy.negation.conjunction', ctx.property))
 	}
 }
 
-export async function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: NegationStrategy, context?: SuggesterContext): Promise<boolean> {
-	return !await matchStrategy(plugin, suggestion, strategy.strategy, context);
+export async function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: NegationStrategy, ctx: EvalContext): Promise<boolean> {
+	return !await matchStrategy(plugin, suggestion, strategy.strategy, ctx);
 }

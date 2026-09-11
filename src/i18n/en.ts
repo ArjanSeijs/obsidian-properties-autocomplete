@@ -48,7 +48,7 @@ export default {
 	'settings.modal.folder.subfolders.name': 'Subfolders',
 	'settings.modal.folder.subfolders.description': 'Include files in subfolders',
 	'settings.modal.code.success': 'Code completed successfully',
-	'settings.modal.code.fail': 'Code did not completed successfully',
+	'settings.modal.code.fail': 'Code execution return unsuccessfully',
 	'settings.modal.strategylist.heading': 'Substrategy $0',
 
 	'settings.modal.display.heading': 'Frontmatter Appearance',
