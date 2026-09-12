@@ -15,12 +15,12 @@ export interface FolderStrategy {
 }
 
 export function evaluate(plugin: AutoPropPlugin, strategy: FolderStrategy, ctx: EvalContext) {
-	const folder = ctx.suggester ? pathResolve(ctx.suggester.sourcePath, "..", strategy.folder) : pathResolve(strategy.folder);
+	const folder = ctx.suggesterCtx ? pathResolve(ctx.suggesterCtx.sourcePath, "..", strategy.folder) : pathResolve(strategy.folder);
 
 	return getFilesInFolder(plugin.app, folder, strategy.includeSubFolders).filter(value => value instanceof TFile);
 }
 
 export function match(_: AutoPropPlugin, suggestion: StrategySuggestionResult, strategy: FolderStrategy, ctx: EvalContext): boolean {
-	const folder = ctx.suggester ? pathResolve(ctx.suggester.sourcePath, "..", strategy.folder) : pathResolve(strategy.folder);
+	const folder = ctx.suggesterCtx ? pathResolve(ctx.suggesterCtx.sourcePath, "..", strategy.folder) : pathResolve(strategy.folder);
 	return suggestion instanceof TFile && suggestion.path.toLowerCase().includes(folder)
 }

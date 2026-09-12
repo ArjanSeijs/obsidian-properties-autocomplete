@@ -122,13 +122,13 @@ export async function queryStrategy(plugin: AutoPropPlugin, strategy: Suggestion
  */
 function fuzzySearchSuggestions(app: App, suggestion: StrategySuggestionResult, fuzzySearcher: FuzzySearcher, ctx: EvalContext): SuggestionResult[] {
 	if (typeof suggestion === "string") {
-		let text = suggestionToString(app, suggestion, ctx.suggester);
+		let text = suggestionToString(app, suggestion, ctx.suggesterCtx);
 		let result = fuzzySearcher(text);
 		if (!result) return [];
 		return [{type: 'text', score: result.score, matches: result.matches, text}]
 	} else if (suggestion instanceof TFile) {
-		let fileText = suggestionToString(app, suggestion, ctx.suggester);
-		let aliasTexts = getAliases(app, suggestion).map(value => suggestionToString(app, suggestion, ctx.suggester, value));
+		let fileText = suggestionToString(app, suggestion, ctx.suggesterCtx);
+		let aliasTexts = getAliases(app, suggestion).map(value => suggestionToString(app, suggestion, ctx.suggesterCtx, value));
 		return [fileText, ...aliasTexts]
 			.map(text => {
 				let result = fuzzySearcher(text)

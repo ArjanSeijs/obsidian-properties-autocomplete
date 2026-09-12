@@ -103,7 +103,7 @@ async function getSuggestionsPatch(instance: ObsidianPropertySuggester<Suggestio
 
 	let additional: FlatArray<SuggestionResult[][], 1>[];
 	try {
-		additional = await queryStrategy(plugin, strategy, query, instance.context);
+		additional = await queryStrategy(plugin, strategy, query, {property, suggesterCtx: instance.context});
 	} catch (error) {
 		if (error instanceof ErrorWithNotice) error.showNotice();
 		console.error(error);

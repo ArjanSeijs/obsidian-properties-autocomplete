@@ -4,6 +4,7 @@ export function intersection2<T>(test: (a: T, b: T) => boolean, array1: T[], arr
 
 export function intersection<T>(test: (a: T, b: T) => boolean, ...arrays: T[][]): T[] {
 	if (arrays.length === 0) return [];
+	if (arrays.length === 1) return arrays[0]!;
 	return arrays.reduce((acc, curr) => intersection2(test, acc, curr));
 }
 

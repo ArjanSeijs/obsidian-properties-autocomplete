@@ -23,7 +23,7 @@ export function evaluate(plugin: AutoPropPlugin, strategy: NegationStrategy, ctx
 		case "Tag":
 			return [...getMarkdownFilesWithTag(plugin.app, subStrategy.tag, subStrategy.exact, true)]
 		case "Folder": {
-			const folder = ctx.suggester ? pathResolve(ctx.suggester.sourcePath, "..", subStrategy.folder) : pathResolve(subStrategy.folder);
+			const folder = ctx.suggesterCtx ? pathResolve(ctx.suggesterCtx.sourcePath, "..", subStrategy.folder) : pathResolve(subStrategy.folder);
 			return plugin.app.vault.getMarkdownFiles().filter(value => !value.path.includes(folder))
 		}
 		case "JS":

@@ -255,7 +255,7 @@ export class PropertySettingsModal extends Modal {
 							.addOption('Tag', text('settings.modal.strategyselector.tag'))
 							.addOption('Folder', text('settings.modal.strategyselector.folder'))
 							.addOption('List', text('settings.modal.strategyselector.list'))
-						if (!options.js) dropdown.addOption('JS', 'JS')
+						if (!options.js || !this.plugin.settings.allowJs) dropdown.addOption('JS', 'JS')
 						if (!options.or) dropdown.addOption('Disjunction', text('settings.modal.strategyselector.or'))
 						if (!options.and) dropdown.addOption('Conjunction', text('settings.modal.strategyselector.and'))
 						if (!options.negation) dropdown.addOption('Negation', text('settings.modal.strategyselector.not'))
@@ -446,8 +446,11 @@ export class PropertySettingsModal extends Modal {
 	private renderCodeBlock(element: HTMLElement, strategy: CodeStrategy) {
 		new Setting(element)
 			.setName('JavaScript')
-			.setDesc('JavaScript code: function(app) { ... }')
-			.addTextArea(text => text.setValue(strategy.code).onChange(async value => {
+			.setDesc('function(app, ctx) { ... }')
+			.addTextArea(text => text
+				.setValue(strategy.code)
+				.setPlaceholder('...')
+				.onChange(async value => {
 				strategy.code = value;
 				await this.onQueryChange()
 			}))

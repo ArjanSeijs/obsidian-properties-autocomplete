@@ -1,7 +1,7 @@
 import AutoPropPlugin from "../main";
 import {App, CachedMetadata, Notice, TFile} from "obsidian";
 import {getFrontmatter} from "./fileutil";
-import {ErrorWithNotice} from "../types";
+import {AsyncFunction, ErrorWithNotice} from "../types";
 import {text} from "../i18n";
 
 export type Validator<T> = (value: unknown) => value is T;
@@ -21,6 +21,23 @@ export function timeout(ms: number): Promise<never> {
 		window.setTimeout(() => reject(new ErrorWithNotice(`Timeout (${ms} ms)`, text('error.code.timeout', ms))), ms));
 }
 
+
+type FunCtx = { file: TFile | null; frontmatter: object | null; metadata: CachedMetadata | null };
+
+type UserScript = (app: App, ctx: ExecContext) => Promise<unknown>;
+
+
+/**
+ * Execute function inside a promise context.
+ * @param code
+ * @param app
+ * @param ctx
+ */
+async function createFunction(code: string, app: App, ctx: FunCtx): Promise<unknown> {
+	let func = new AsyncFunction("app", "ctx", code) as UserScript;
+	return await func(app, ctx);
+}
+
 /**
  *
  * @param plugin
@@ -38,11 +55,10 @@ export async function evalAndValidate<T>(plugin: AutoPropPlugin, code: string, v
 		let file = sourcePath ? plugin.app.vault.getFileByPath(sourcePath) : null;
 		let frontmatter = file ? getFrontmatter(plugin.app, file) : null;
 		let metadata = file ? plugin.app.metadataCache.getFileCache(file) : null;
-		let ectx = {file, frontmatter, metadata};
-		// eslint-disable-next-line eslint-comments/no-restricted-disable -- See below
-		// eslint-disable-next-line @typescript-eslint/no-implied-eval,obsidianmd/rule-custom-message -- Users own risk, only executed if enabled in settings.
-		let func = new Function("app", "ectx", code) as (app: App, ectx: ExecContext) => Promise<unknown>;
-		let result = await Promise.race([func(plugin.app, ectx), timeout(ms)]);
+		let ctx: FunCtx = {file, frontmatter, metadata};
+
+		let func = createFunction(code, plugin.app, ctx);
+		let result = await Promise.race([func, timeout(ms)]);
 
 		if (!Array.isArray(result)) {
 			new Notice(text('error.code.array', typeof result));

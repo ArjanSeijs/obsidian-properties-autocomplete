@@ -2,7 +2,7 @@ import AutoPropPlugin from "../main";
 import {evalAndValidate} from "../util/code";
 
 import {StrategySuggestionResult, isSuggestionResult, eqSuggestionResult} from "./suggestion";
-import {ErrorWithNotice, EvalContext, SuggesterContext} from "../types";
+import {ErrorWithNotice, EvalContext} from "../types";
 import {text} from "../i18n";
 
 /**
@@ -14,12 +14,12 @@ export interface CodeStrategy {
 }
 
 export async function evaluate(plugin: AutoPropPlugin, code: CodeStrategy, ctx: EvalContext) {
-	const results = await evalAndValidate(plugin, code.code, isSuggestionResult, ctx.suggester?.sourcePath);
+	const results = await evalAndValidate(plugin, code.code, isSuggestionResult, ctx.suggesterCtx?.sourcePath);
 	if (results === null) throw new ErrorWithNotice('Error executing code for ' + ctx.property, text('error.code.fail', ctx.property))
 	return results ?? []
 }
 
 export async function match(plugin: AutoPropPlugin, suggestion: StrategySuggestionResult, code: CodeStrategy, ctx: EvalContext): Promise<boolean> {
-	const results = await evalAndValidate(plugin, code.code, isSuggestionResult, ctx.suggester?.sourcePath);
+	const results = await evalAndValidate(plugin, code.code, isSuggestionResult, ctx.suggesterCtx?.sourcePath);
 	return results?.some(other => eqSuggestionResult(suggestion, other)) ?? false;
 }

@@ -12,7 +12,7 @@ export type uninstaller = () => void
 
 export type StrategyCache = { [key: string]: StrategySuggestionResults }
 
-export type EvalContext = {property : string, suggester? : SuggesterContext}
+export type EvalContext = {property : string, suggesterCtx? : SuggesterContext}
 /**
  * Internal api for property suggester.
  */
@@ -104,3 +104,10 @@ export class ErrorWithNotice extends Error {
 	}
 
 }
+
+export type AsyncFunctionType<A extends [] = [], T = unknown> = (...args: A) => Promise<T>;
+export type AsyncFunctionConstructor<A extends [] = [], T = unknown> = new (...args: string[]) => AsyncFunctionType<A, T>;
+
+export const AsyncFunction = async function (..._: string[]) {
+}.constructor as AsyncFunctionConstructor;
+

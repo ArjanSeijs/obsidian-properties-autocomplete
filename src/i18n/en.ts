@@ -24,7 +24,7 @@ export default {
 	'settings.definitions.code.enabled.name': 'Enabled',
 	'settings.definitions.code.enabled.description': 'Enable execution of custom user scripts',
 	'settings.definitions.code.timeout.name': 'Timeout',
-	'settings.definitions.code.timeout.description': 'Time in ms before scripts timeouts',
+	'settings.definitions.code.timeout.description': 'Time in ms before scripts timeouts, (it will still run in the background but stop waiting, make sure not to create infinite loops)',
 
 
 	'settings.modal.title': 'Settings for property: $0',
@@ -48,7 +48,7 @@ export default {
 	'settings.modal.folder.subfolders.name': 'Subfolders',
 	'settings.modal.folder.subfolders.description': 'Include files in subfolders',
 	'settings.modal.code.success': 'Code completed successfully',
-	'settings.modal.code.fail': 'Code execution return unsuccessfully',
+	'settings.modal.code.fail': 'Code execution returned unsuccessfully',
 	'settings.modal.strategylist.heading': 'Substrategy $0',
 
 	'settings.modal.display.heading': 'Frontmatter Appearance',
