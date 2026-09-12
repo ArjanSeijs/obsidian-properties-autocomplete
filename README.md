@@ -1,6 +1,4 @@
-Enhances the native obsidian autocomplete of frontmatter properties with custom rules.
-
-# Autocomplete Properties Enhanced.
+# Property Suggester Enhanced
 Autocomplete Properties Enhanced improves the native obsidian suggester for frontmatter properties 
 with a custom 'strategy builder'. Define custom rules for what values a property may take.
 Additionally apply custom icons to properties.

@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
-	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"name": "property-suggester-enhanced",
+	"version": "1.0.1",
+	"description": "Enhance the property suggestions through the use of custom rules. With some additional styling options.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {

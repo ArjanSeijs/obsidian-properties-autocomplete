@@ -366,8 +366,12 @@ export class PropertySettingsModal extends Modal {
 				if (!setting) {
 					console.error(`Could not render option in list on index: ${i}`)
 				} else {
-					if (option) this.renderListOption(setting, option, strategy, i, onChange)
-					else setting.clear();
+					if (option) {
+						this.renderListOption(setting, option, strategy, i, onChange)
+					} else {
+						setting.clear();
+						setting.controlEl.parentElement?.addClass('is-empty');
+					}
 				}
 			}
 		}
@@ -377,8 +381,10 @@ export class PropertySettingsModal extends Modal {
 				btn.setIcon('plus').onClick(async () => {
 					const option = {label: '', value: ''};
 					strategy.options.push(option);
-					if (settings[strategy.options.length - 1]) {
-						this.renderListOption(settings[strategy.options.length - 1]!, option, strategy, strategy.options.length - 1, onChange);
+					const setting = settings[strategy.options.length - 1];
+					if (setting) {
+						setting.controlEl.parentElement?.removeClass('is-empty');
+						this.renderListOption(setting, option, strategy, strategy.options.length - 1, onChange);
 					} else {
 						settingGroup.addSetting(setting => {
 								settings.push(setting);

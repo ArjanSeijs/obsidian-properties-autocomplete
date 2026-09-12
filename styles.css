@@ -49,11 +49,11 @@ If your plugin does not need CSS, delete this file.
 	flex-wrap: wrap;
 }
 
-.modal-container.property-setting-modal *> .setting-items *> .setting-item:has(.setting-item-control:empty) {
+.setting-group .setting-item:not(.setting-item-heading).setting-item.is-empty {
 	padding: 0;
 }
 
-.modal-container.property-setting-modal *> .setting-items *> .setting-item:has(.setting-item-control:empty)::before {
+.setting-group .setting-item:not(.setting-item-heading).is-empty:before {
 	border-top-width: 0;
 }
 

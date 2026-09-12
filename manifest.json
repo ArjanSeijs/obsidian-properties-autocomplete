@@ -1,10 +1,10 @@
 {
 	"id": "property-suggester-enhanced",
 	"name": "Property Suggester Enhanced",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.13.7",
-	"description": "Enhance the obsidian property suggestions through the use of custom rules. With some additional styling options.",
+	"description": "Enhance the property suggestions through the use of custom rules. With some additional styling options.",
 	"author": "EternalSoap",
-	"authorUrl": "eternalsoap.nl",
+	"authorUrl": "https://eternalsoap.nl",
 	"isDesktopOnly": false
 }
